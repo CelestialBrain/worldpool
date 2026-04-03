@@ -27,7 +27,7 @@ jobs:
         run: npm ci
 
       - name: Download GeoLite2 database
-        if: env.MAXMIND_LICENSE_KEY != ''
+        if: ${{ secrets.MAXMIND_LICENSE_KEY != '' }}
         run: |
           mkdir -p data
           curl -sSL "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-Country&license_key=${MAXMIND_LICENSE_KEY}&suffix=tar.gz" -o geolite2.tar.gz

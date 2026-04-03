@@ -40,6 +40,9 @@ export interface ProxyRow {
   source: string | null;
   last_checked: number;   // unix epoch seconds
   created_at: number;     // unix epoch seconds
+  check_count: number;    // total times checked
+  alive_count: number;    // times found alive
+  reliability_pct: number; // alive_count / check_count * 100, rounded to 1 dp
 }
 
 // ─── Validated Proxy (Internal) ───────────────────────────────────────────────
@@ -77,6 +80,7 @@ export interface ProxyResponse {
   hijacked: boolean;
   country: string | null;
   last_checked: number;
+  reliability_pct: number;
 }
 
 /** GET /stats response shape. */
@@ -87,6 +91,7 @@ export interface PoolStatsResponse {
   google_pass_count: number;
   hijacked_count: number;
   avg_latency_ms: number;
+  avg_reliability_pct: number;
   by_protocol: ProtocolBreakdown[];
   last_updated: number | null;
 }
