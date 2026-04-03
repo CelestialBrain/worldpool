@@ -34,6 +34,24 @@ When Worldpool validates a proxy, it makes an outbound HTTP request **through an
 - Validator only parses HTTP status codes and JSON headers — never renders HTML
 - All proxy responses wrapped in `try/catch` — malformed data cannot crash the validator
 - Response body size capped to prevent memory exhaustion
+- Proxies that tamper with responses are flagged `hijacked = true` and permanently excluded from the served pool
+
+#### Hijack Detection Categories
+
+The validator probes each live proxy against a known endpoint and classifies any tampering:
+
+| Category | Description |
+|----------|-------------|
+| `ad_injection` | Proxy injects advertising content into responses |
+| `redirect` | Proxy redirects requests to a different destination |
+| `captive_portal` | Proxy presents a captive portal page |
+| `content_substitution` | Proxy modifies response body content |
+| `ssl_strip` | Proxy strips SSL/TLS from HTTPS connections |
+
+Flagged proxies are exported to:
+- `proxies/hijacked.txt` — plain list of hijacked proxy IPs (`host:port` per line)
+- `proxies/hijacked.json` — full records with `hijack_type`, `hijack_body`, `country`, `asn`
+- `proxies/malicious-asn.txt` — ASNs ranked by number of hijacked proxies
 
 ### 4. Honeypots / Reverse Fingerprinting — LOW-MEDIUM
 
@@ -79,6 +97,7 @@ When Worldpool validates a proxy, it makes an outbound HTTP request **through an
 3. **Throwaway nodes:** Treat the validator VPS as disposable — if flagged, destroy and recreate
 4. **Monitor:** Watch for unusual inbound traffic patterns that might indicate a honeypot probing back
 5. **GitHub Actions preferred:** Running the pipeline in Actions uses Microsoft Azure runner IPs, not your own infrastructure
+6. **Respect opt-outs:** IP operators may request exclusion from the scanner via `POST /optout`; entries are stored in `data/scan-exclude.txt` and must be honoured by the scanner on every run
 
 ## Security Checklist for Contributors
 
@@ -88,3 +107,5 @@ When Worldpool validates a proxy, it makes an outbound HTTP request **through an
 - [ ] Concurrency is hard-capped (check `config.ts`)
 - [ ] Response body size is limited
 - [ ] VPS firewall rules are documented and applied
+- [ ] Opt-out exclusion list (`data/scan-exclude.txt`) is respected by the scanner
+- [ ] Hijack detection types are valid enum values (`ad_injection`, `redirect`, `captive_portal`, `content_substitution`, `ssl_strip`)

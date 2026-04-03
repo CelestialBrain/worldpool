@@ -98,13 +98,32 @@ log.debug('Proxy details', { host, port, latency_ms });
 ```
 migrations/        ← SQLite schema (numbered, idempotent)
 proxies/           ← Auto-generated flat files (committed by Actions)
-data/              ← Auto-generated JSON exports
+data/              ← Auto-generated JSON exports + scanner config
+  proxies.json
+  stats.json
+  scan-targets.txt ← IP ranges for the active scanner
+  scan-exclude.txt ← IPs/CIDRs excluded from scanning (opt-out list)
+infra/
+  explainer/       ← Static explainer page (index.html + nginx.conf)
 src/
   types.ts         ← ProxyRow, ProxyResponse, enums, shared types
   config.ts        ← Typed config with env overrides
   models/          ← SQLite DAL (proxy.ts — upsert, query, stats)
-  services/        ← Business logic (validator, pipeline, exporter)
-  scrapers/        ← Per-source fetchers (proxyscrape, geonode, etc.)
+  services/        ← Business logic
+    validator.ts
+    pipeline.ts
+    exporter.ts
+    geolocator.ts  ← MaxMind GeoLite2-Country + GeoLite2-ASN lookups
+    optout.ts      ← POST /optout endpoint + scan-exclude.txt writer
+  scrapers/        ← Per-source fetchers
+    proxyscrape.ts
+    geonode.ts
+    thespeedx.ts
+    proxifly.ts
+    shodan.ts
+    censys.ts
+    scanner/       ← Active port-scanner (targets.ts, tcp-probe.ts, etc.)
+    index.ts
   routes/          ← Hono HTTP handlers (no raw SQL)
   utils/           ← Shared utilities (logger, db connection)
   index.ts         ← Entry point (Hono server)
