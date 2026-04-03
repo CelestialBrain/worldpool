@@ -11,7 +11,7 @@ import type { Agent } from 'http';
 import type { RawProxy, ValidatedProxy, AnonymityLevel, HijackType } from '../types.js';
 import { config } from '../config.js';
 import { createLogger } from '../utils/logger.js';
-import { initGeo, initGeoAsn, lookupCountry, lookupAsn } from './geolocator.js';
+import { initGeo, initGeoAsn, lookupCountry, lookupAsn, prewarmFreeGeoCache } from './geolocator.js';
 
 const log = createLogger('validator');
 
@@ -245,9 +245,9 @@ export async function validateProxy(proxy: RawProxy): Promise<ValidatedProxy> {
     const anonymity = classifyAnonymity(judgeHeaders, myIp);
 
     // ── Geo lookup ─────────────────────────────────────────────────────
-    const geoCountry = lookupCountry(proxy.host);
+    const geoCountry = await lookupCountry(proxy.host);
     const country = geoCountry ?? proxy.country;
-    const asn = lookupAsn(proxy.host) ?? undefined;
+    const asn = (await lookupAsn(proxy.host)) ?? undefined;
 
     // ── Hijack detection ───────────────────────────────────────────────
     const hijackResult = await checkHijacked(httpAgent, httpsAgent);
@@ -306,8 +306,10 @@ export async function validateAll(proxies: RawProxy[]): Promise<ValidatedProxy[]
     timeout_ms: config.validator.timeoutMs,
   });
 
-  // Pre-warm own IP detection and geo database
+  // Pre-warm own IP detection and geo databases
   await Promise.all([getOwnIp(), initGeo(config.geo.mmdbPath), initGeoAsn(config.geo.asnMmdbPath)]);
+  // When GeoLite2 is unavailable, batch-fetch all proxy IPs from the free API
+  await prewarmFreeGeoCache(proxies.map((p) => p.host));
 
   let completed = 0;
   let aliveCount = 0;

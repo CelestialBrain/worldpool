@@ -59,6 +59,7 @@ export async function exportFiles(): Promise<void> {
   const stats = getStats();
 
   await Promise.all([
+    writeFile(join(proxiesDir, 'all.txt'), toLines(all)),
     writeFile(join(proxiesDir, 'http.txt'), toLines(http)),
     writeFile(join(proxiesDir, 'socks4.txt'), toLines(socks4)),
     writeFile(join(proxiesDir, 'socks5.txt'), toLines(socks5)),
@@ -72,6 +73,7 @@ export async function exportFiles(): Promise<void> {
   ]);
 
   log.info('Export complete', {
+    all: all.length,
     http: http.length,
     socks4: socks4.length,
     socks5: socks5.length,

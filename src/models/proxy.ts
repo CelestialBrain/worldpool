@@ -30,6 +30,7 @@ function rowToResponse(row: ProxyRow): ProxyResponse {
     hijacked: row.hijacked === 1,
     country: row.country,
     last_checked: row.last_checked,
+    reliability_pct: row.reliability_pct,
   };
 }
 
@@ -40,22 +41,30 @@ export function upsertProxy(proxies: ValidatedProxy[]): void {
   const stmt = db.prepare(`
     INSERT INTO proxy
       (proxy_id, host, port, protocol, anonymity, latency_ms, google_pass, alive, hijacked,
-       hijack_type, hijack_body, asn, country, source, last_checked, created_at)
+       hijack_type, hijack_body, asn, country, source, last_checked, created_at,
+       check_count, alive_count, reliability_pct)
     VALUES
       (@proxy_id, @host, @port, @protocol, @anonymity, @latency_ms, @google_pass, @alive, @hijacked,
-       @hijack_type, @hijack_body, @asn, @country, @source, @last_checked, @created_at)
+       @hijack_type, @hijack_body, @asn, @country, @source, @last_checked, @created_at,
+       @check_count, @alive_count, @reliability_pct)
     ON CONFLICT(proxy_id) DO UPDATE SET
-      anonymity    = excluded.anonymity,
-      latency_ms   = excluded.latency_ms,
-      google_pass  = excluded.google_pass,
-      alive        = excluded.alive,
-      hijacked     = excluded.hijacked,
-      hijack_type  = excluded.hijack_type,
-      hijack_body  = excluded.hijack_body,
-      asn          = excluded.asn,
-      country      = excluded.country,
-      source       = excluded.source,
-      last_checked = excluded.last_checked
+      anonymity       = excluded.anonymity,
+      latency_ms      = excluded.latency_ms,
+      google_pass     = excluded.google_pass,
+      alive           = excluded.alive,
+      hijacked        = excluded.hijacked,
+      hijack_type     = excluded.hijack_type,
+      hijack_body     = excluded.hijack_body,
+      asn             = excluded.asn,
+      country         = excluded.country,
+      source          = excluded.source,
+      last_checked    = excluded.last_checked,
+      check_count     = proxy.check_count + 1,
+      alive_count     = proxy.alive_count + excluded.alive,
+      reliability_pct = ROUND(
+        CAST(proxy.alive_count + excluded.alive AS REAL)
+        / CAST(proxy.check_count + 1 AS REAL) * 100.0, 1
+      )
   `);
 
   const insert = db.transaction((items: ValidatedProxy[]) => {
@@ -77,6 +86,11 @@ export function upsertProxy(proxies: ValidatedProxy[]): void {
         source: p.source ?? null,
         last_checked: p.last_checked,
         created_at: now,
+        // Uptime counters: INSERT uses absolute values for the first check;
+        // the ON CONFLICT clause uses incremental SQL to update existing rows.
+        check_count: 1,
+        alive_count: p.alive ? 1 : 0,
+        reliability_pct: p.alive ? 100.0 : 0.0,
       });
     }
   });
@@ -182,6 +196,7 @@ export function getStats(): PoolStatsResponse {
         SUM(CASE WHEN google_pass = 1 AND alive = 1 THEN 1 ELSE 0 END) as google_pass_count,
         SUM(CASE WHEN hijacked = 1 THEN 1 ELSE 0 END) as hijacked_count,
         AVG(CASE WHEN alive = 1 AND latency_ms >= 0 THEN latency_ms ELSE NULL END) as avg_latency_ms,
+        AVG(CASE WHEN check_count > 0 THEN reliability_pct ELSE NULL END) as avg_reliability_pct,
         MAX(last_checked) as last_updated
       FROM proxy`,
     )
@@ -192,6 +207,7 @@ export function getStats(): PoolStatsResponse {
     google_pass_count: number;
     hijacked_count: number;
     avg_latency_ms: number | null;
+    avg_reliability_pct: number | null;
     last_updated: number | null;
   };
 
@@ -211,6 +227,7 @@ export function getStats(): PoolStatsResponse {
     google_pass_count: totals.google_pass_count ?? 0,
     hijacked_count: totals.hijacked_count ?? 0,
     avg_latency_ms: Math.round(totals.avg_latency_ms ?? 0),
+    avg_reliability_pct: Math.round((totals.avg_reliability_pct ?? 0) * 10) / 10,
     by_protocol: byProtocol as ProtocolBreakdown[],
     last_updated: totals.last_updated ?? null,
   };
