@@ -11,29 +11,36 @@ Worldpool is an automated proxy aggregation, validation, and serving pipeline. I
 ```
 [ Scrapers ]                    [ Shodan API (optional) ]
   ProxyScrape API                 port:1080, 8080, 3128
-  Geonode API
-  TheSpeedX GitHub
-  Proxifly JSON
+  Geonode API                   [ Censys API (optional) ]
+  TheSpeedX GitHub                open proxy services
+  Proxifly JSON                 [ Scanner (optional) ]
+  Shodan API                      port-scans scan-targets.txt
+  Censys API
+  Scanner (active)
          ↓
 [ Deduplicator ]
   normalize host:port
   discard duplicates
          ↓
-[ Validator — worker_threads + p-limit ]
+[ Validator — p-limit ]
   → Self-hosted judge (echo headers → anonymity level)
   → Google generate_204 check
   → TCP latency measurement
+  → Hijack detection (ad_injection, redirect, etc.)
          ↓
 [ SQLite Store ]
   upsert by proxy_id (host:port)
   indexed on alive, anonymity, protocol, latency
          ↓
 [ Exporter ]                    [ Hono REST API ]
-  proxies/http.txt                GET /proxies
-  proxies/socks4.txt              GET /proxies/random
-  proxies/socks5.txt              GET /stats
-  proxies/elite.txt               POST /refresh
-  proxies/google-pass.txt
+  proxies/http.txt                GET /
+  proxies/socks4.txt              GET /proxies
+  proxies/socks5.txt              GET /proxies/random
+  proxies/elite.txt               GET /stats
+  proxies/google-pass.txt         POST /refresh
+  proxies/hijacked.txt            POST /optout
+  proxies/hijacked.json
+  proxies/malicious-asn.txt
   data/proxies.json
   data/stats.json
 ```
@@ -51,6 +58,9 @@ Updated automatically every 6 hours via GitHub Actions.
 | [`proxies/socks5.txt`](proxies/socks5.txt) | SOCKS5 proxies |
 | [`proxies/elite.txt`](proxies/elite.txt) | Elite anonymity only (all protocols) |
 | [`proxies/google-pass.txt`](proxies/google-pass.txt) | Proxies that pass Google's `generate_204` check |
+| [`proxies/hijacked.txt`](proxies/hijacked.txt) | Hijacked proxy IPs, `host:port` per line |
+| [`proxies/hijacked.json`](proxies/hijacked.json) | Full hijacked proxy details with classification |
+| [`proxies/malicious-asn.txt`](proxies/malicious-asn.txt) | ASNs ranked by hijacked proxy count |
 
 ### Structured Data
 
@@ -58,12 +68,22 @@ Updated automatically every 6 hours via GitHub Actions.
 |------|-------------|
 | [`data/proxies.json`](data/proxies.json) | Full proxy list with metadata (protocol, anonymity, latency, country) |
 | [`data/stats.json`](data/stats.json) | Pool health snapshot (counts, avg latency, breakdown by protocol) |
+| [`data/scan-targets.txt`](data/scan-targets.txt) | IP ranges for the active scanner |
+| [`data/scan-exclude.txt`](data/scan-exclude.txt) | IPs/CIDRs excluded from scanning (opt-out list) |
 
 ---
 
 ## API
 
 The REST API serves the live pool. Default port: `3000`.
+
+### `GET /`
+
+Health check.
+
+```json
+{ "name": "worldpool", "status": "ok" }
+```
 
 ### `GET /proxies`
 
@@ -90,6 +110,7 @@ Returns filtered proxies sorted by latency.
       "anonymity": "elite",
       "latency_ms": 142,
       "google_pass": true,
+      "hijacked": false,
       "country": "PH",
       "last_checked": 1743696000
     }
@@ -118,6 +139,7 @@ Pool health and breakdown.
   "alive_count": 812,
   "elite_count": 445,
   "google_pass_count": 89,
+  "hijacked_count": 134,
   "avg_latency_ms": 340,
   "by_protocol": [
     { "protocol": "http", "proxy_count": 502 },
@@ -133,6 +155,28 @@ Manually trigger a full pipeline run. Requires `X-Admin-Token` header.
 
 ```json
 { "ok": true, "alive_count": 812 }
+```
+
+### `POST /optout`
+
+Request exclusion of an IP or CIDR range from the active scanner. Appends the entry to `data/scan-exclude.txt`.
+
+**Body (JSON):**
+
+```json
+{ "ip": "1.2.3.4" }
+```
+
+or
+
+```json
+{ "cidr": "1.2.3.0/24" }
+```
+
+**Response:**
+
+```json
+{ "ok": true, "added": "1.2.3.4" }
 ```
 
 ---
@@ -189,8 +233,11 @@ Without the database, the pipeline runs normally — proxies will use country da
 | HTTP Framework | Hono |
 | Database | SQLite (better-sqlite3) |
 | Proxy Agents | proxy-agent (auto-detect protocol) |
-| Concurrency | p-limit + worker_threads |
-| Geolocation | MaxMind GeoLite2-Country (offline, zero-latency) |
+| Concurrency | p-limit |
+| Geolocation | MaxMind GeoLite2-Country + GeoLite2-ASN (offline, zero-latency) |
+| Proxy Discovery | Shodan API (optional, `SHODAN_API_KEY`) |
+| Proxy Discovery | Censys API (optional, `CENSYS_API_ID` + `CENSYS_API_SECRET`) |
+| Proxy Discovery | Active Scanner (optional, `SCANNER_ENABLED=true`) |
 | Scheduling | GitHub Actions cron / node-cron |
 | CI/CD | GitHub Actions |
 
@@ -199,7 +246,9 @@ Without the database, the pipeline runs normally — proxies will use country da
 ## Security
 
 - **Judge server** requires `X-Judge-Token` header — only responds to validated requests
-- **Hijack detection** — each live proxy is probed against a known endpoint; if the response is tampered (ads injected, JSON malformed, wrong fields), the proxy is flagged `hijacked = true` and never served
+- **Hijack detection** — each live proxy is probed against a known endpoint; if the response is tampered, the proxy is flagged `hijacked = true` and never served. Five detection categories: `ad_injection`, `redirect`, `captive_portal`, `content_substitution`, `ssl_strip`
+- **Threat-intel exports** — hijacked proxies are written to `proxies/hijacked.txt`, `proxies/hijacked.json`, and `proxies/malicious-asn.txt` for downstream consumption
+- **Opt-out system** — IP operators can request exclusion from the active scanner via `POST /optout`; exclusions are stored in `data/scan-exclude.txt` and respected on every scan run
 - **Validator runs on isolated infra** — never share with production apps
 - **Concurrency hard-capped** at 100 to prevent OOM on constrained nodes
 - **All proxy responses** are try/catch guarded — malicious payloads can't crash the validator

@@ -10,7 +10,7 @@ Worldpool runs a 5-stage pipeline on a configurable schedule (default: every 6 h
 ┌─────────────┐    ┌──────────────┐    ┌────────────┐    ┌─────────┐    ┌──────────┐
 │  1. SCRAPE   │───▶│ 2. DEDUPLICATE│───▶│ 3. VALIDATE │───▶│ 4. STORE │───▶│ 5. EXPORT │
 │              │    │              │    │             │    │         │    │          │
-│ 4 sources    │    │ by host:port │    │ judge       │    │ SQLite  │    │ txt/json │
+│ 7 sources    │    │ by host:port │    │ judge       │    │ SQLite  │    │ txt/json │
 │ in parallel  │    │ normalize    │    │ google 204  │    │ upsert  │    │ stats    │
 │              │    │              │    │ latency     │    │         │    │ README   │
 └─────────────┘    └──────────────┘    └────────────┘    └─────────┘    └──────────┘
@@ -28,6 +28,9 @@ Each source has its own fetcher in `src/scrapers/`. All run in parallel via `Pro
 | **Geonode** | REST API | Every 5 min | JSON | Has `google_pass` flag built-in |
 | **TheSpeedX** | GitHub raw | Hourly | Text files | Separate files per protocol, high volume |
 | **Proxifly** | GitHub raw | Every 5 min | JSON | Structured with metadata |
+| **Shodan** | REST API | On-demand | JSON | Searches for open proxy ports (1080, 3128, 8080). Requires `SHODAN_API_KEY`. |
+| **Censys** | REST API | On-demand | JSON | Searches for open proxy services. Requires `CENSYS_API_ID` + `CENSYS_API_SECRET`. |
+| **Scanner** | Active probe | On-demand | Raw | Port-scans IP ranges from `data/scan-targets.txt`, respects `data/scan-exclude.txt`. Disabled by default (`SCANNER_ENABLED=true` to enable). |
 
 ### Fetcher Contract
 
@@ -116,12 +119,21 @@ See [`migrations/001_init.sql`](../migrations/001_init.sql) for full schema.
 ### Upsert Strategy
 
 ```sql
-INSERT INTO proxy (...) VALUES (...)
+INSERT INTO proxy
+  (proxy_id, host, port, protocol, anonymity, latency_ms, google_pass, alive,
+   hijacked, hijack_type, hijack_body, asn, country, source, last_checked, created_at)
+VALUES (...)
 ON CONFLICT(proxy_id) DO UPDATE SET
   anonymity    = excluded.anonymity,
   latency_ms   = excluded.latency_ms,
   google_pass  = excluded.google_pass,
   alive        = excluded.alive,
+  hijacked     = excluded.hijacked,
+  hijack_type  = excluded.hijack_type,
+  hijack_body  = excluded.hijack_body,
+  asn          = excluded.asn,
+  country      = excluded.country,
+  source       = excluded.source,
   last_checked = excluded.last_checked
 ```
 
@@ -135,8 +147,12 @@ This means:
 After storage, the exporter generates:
 
 1. **Flat text files** in `proxies/` — one `host:port` per line, split by protocol and quality tier
-2. **JSON exports** in `data/` — full structured data + stats snapshot
-3. **README update** — replaces the stats section between `<!-- STATS_START -->` and `<!-- STATS_END -->` markers
+2. **Threat-intel files** in `proxies/` — hijacked proxy records for downstream consumption:
+   - `proxies/hijacked.txt` — plain list of hijacked proxy IPs (`host:port` per line)
+   - `proxies/hijacked.json` — full hijacked proxy details with classification (`hijack_type`, `hijack_body`, `country`, `asn`)
+   - `proxies/malicious-asn.txt` — ASNs ranked by hijacked proxy count
+3. **JSON exports** in `data/` — full structured data + stats snapshot
+4. **README update** — replaces the stats section between `<!-- STATS_START -->` and `<!-- STATS_END -->` markers
 
 ## Deployment Model
 
@@ -150,9 +166,16 @@ schedule:
 The Actions workflow:
 1. Checks out the repo
 2. Installs dependencies
-3. Runs `npm run pipeline`
-4. Commits changed files in `proxies/` and `data/` back to the repo
-5. Updates README stats
+3. Downloads GeoLite2-Country and GeoLite2-ASN databases when `MAXMIND_LICENSE_KEY` is set
+4. Runs `npm run pipeline`
+5. Commits changed files in `proxies/` and `data/` back to the repo
+6. Updates README stats
+
+**Optional env vars:**
+- `MAXMIND_LICENSE_KEY` — enables offline geolocation (country + ASN)
+- `SHODAN_API_KEY` — enables Shodan proxy discovery
+- `CENSYS_API_ID` + `CENSYS_API_SECRET` — enables Censys proxy discovery
+- `SCANNER_ENABLED=true` — enables active port scanning against `data/scan-targets.txt`
 
 Every run uses a fresh Azure runner IP — good for avoiding rate limits on proxy sources.
 
@@ -164,6 +187,20 @@ For real-time API access:
 3. Judge endpoint self-hosted on the same server
 
 **Rule:** Never run the validator on the same VPS as production scraping apps. Treat validator nodes as throwaway.
+
+## Opt-out System
+
+IP operators can request that their IPs or CIDR ranges be excluded from the active scanner:
+
+```
+POST /optout
+Content-Type: application/json
+
+{ "ip": "1.2.3.4" }        — exclude a single IP
+{ "cidr": "1.2.3.0/24" }   — exclude a CIDR range
+```
+
+Exclusions are appended to `data/scan-exclude.txt`. The scanner reads this file at startup on every run and skips any IPs matching an excluded entry. The file is committed back to the repo by the Actions workflow, so exclusions persist across runs.
 
 ## Threat Model
 
