@@ -41,4 +41,17 @@ export const config = {
     mmdbPath: process.env.MMDB_PATH ?? 'data/GeoLite2-Country.mmdb',
     asnMmdbPath: process.env.ASN_MMDB_PATH ?? 'data/GeoLite2-ASN.mmdb',
   },
+
+  // ─── Shodan ───────────────────────────────────────────────────────────
+  shodan: {
+    apiKey: process.env.SHODAN_API_KEY ?? '',
+    maxPages: parseInt(process.env.SHODAN_MAX_PAGES ?? '5', 10),
+  },
+
+  // ─── Censys ───────────────────────────────────────────────────────────
+  censys: {
+    apiId: process.env.CENSYS_API_ID ?? '',
+    apiSecret: process.env.CENSYS_API_SECRET ?? '',
+    maxPages: parseInt(process.env.CENSYS_MAX_PAGES ?? '3', 10),
+  },
 } as const;
