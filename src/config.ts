@@ -39,5 +39,6 @@ export const config = {
   // ─── Geo ──────────────────────────────────────────────────────────────
   geo: {
     mmdbPath: process.env.MMDB_PATH ?? 'data/GeoLite2-Country.mmdb',
+    asnMmdbPath: process.env.ASN_MMDB_PATH ?? 'data/GeoLite2-ASN.mmdb',
   },
 } as const;

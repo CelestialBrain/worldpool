@@ -4,8 +4,8 @@
 
 import { mkdir, writeFile, readFile } from 'fs/promises';
 import { join } from 'path';
-import { queryProxy, getStats } from '../models/proxy.js';
-import type { ProxyResponse } from '../types.js';
+import { queryProxy, getStats, queryHijacked } from '../models/proxy.js';
+import type { ProxyResponse, HijackedProxyResponse } from '../types.js';
 import { config } from '../config.js';
 import { createLogger } from '../utils/logger.js';
 
@@ -17,6 +17,27 @@ async function ensureDir(dir: string): Promise<void> {
 
 function toLines(proxies: ProxyResponse[]): string {
   return proxies.map((p) => `${p.host}:${p.port}`).join('\n') + '\n';
+}
+
+function hijackedToLines(proxies: HijackedProxyResponse[]): string {
+  return proxies.map((p) => `${p.ip}:${p.port}`).join('\n') + '\n';
+}
+
+function buildMaliciousAsnList(proxies: HijackedProxyResponse[]): string {
+  const counts = new Map<string, number>();
+  for (const p of proxies) {
+    if (p.asn) {
+      counts.set(p.asn, (counts.get(p.asn) ?? 0) + 1);
+    }
+  }
+  if (counts.size === 0) return '';
+
+  return (
+    [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([asn, count]) => `${asn} ${count}`)
+      .join('\n') + '\n'
+  );
 }
 
 export async function exportFiles(): Promise<void> {
@@ -32,6 +53,9 @@ export async function exportFiles(): Promise<void> {
   const googlePass = queryProxy({ google_pass: true, alive_only: true, limit: 100_000 });
   const all = queryProxy({ alive_only: true, limit: 100_000 });
 
+  // Query hijacked proxies for threat-intel output
+  const hijacked = queryHijacked();
+
   const stats = getStats();
 
   await Promise.all([
@@ -40,6 +64,9 @@ export async function exportFiles(): Promise<void> {
     writeFile(join(proxiesDir, 'socks5.txt'), toLines(socks5)),
     writeFile(join(proxiesDir, 'elite.txt'), toLines(elite)),
     writeFile(join(proxiesDir, 'google-pass.txt'), toLines(googlePass)),
+    writeFile(join(proxiesDir, 'hijacked.txt'), hijackedToLines(hijacked)),
+    writeFile(join(proxiesDir, 'hijacked.json'), JSON.stringify(hijacked, null, 2)),
+    writeFile(join(proxiesDir, 'malicious-asn.txt'), buildMaliciousAsnList(hijacked)),
     writeFile(join(dataDir, 'proxies.json'), JSON.stringify(all, null, 2)),
     writeFile(join(dataDir, 'stats.json'), JSON.stringify(stats, null, 2)),
   ]);
@@ -50,6 +77,7 @@ export async function exportFiles(): Promise<void> {
     socks5: socks5.length,
     elite: elite.length,
     google_pass: googlePass.length,
+    hijacked: hijacked.length,
   });
 }
 

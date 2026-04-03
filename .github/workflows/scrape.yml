@@ -33,6 +33,9 @@ jobs:
           curl -sSL "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-Country&license_key=${MAXMIND_LICENSE_KEY}&suffix=tar.gz" -o geolite2.tar.gz
           tar -xzf geolite2.tar.gz --strip-components=1 -C data/ --wildcards '*.mmdb'
           rm geolite2.tar.gz
+          curl -sSL "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-ASN&license_key=${MAXMIND_LICENSE_KEY}&suffix=tar.gz" -o geolite2-asn.tar.gz
+          tar -xzf geolite2-asn.tar.gz --strip-components=1 -C data/ --wildcards '*.mmdb'
+          rm geolite2-asn.tar.gz
         env:
           MAXMIND_LICENSE_KEY: ${{ secrets.MAXMIND_LICENSE_KEY }}
 
@@ -63,6 +66,7 @@ jobs:
             SOCKS5_COUNT=$(wc -l < proxies/socks5.txt 2>/dev/null || echo 0)
             ELITE_COUNT=$(wc -l < proxies/elite.txt 2>/dev/null || echo 0)
             GPASS_COUNT=$(wc -l < proxies/google-pass.txt 2>/dev/null || echo 0)
+            HIJACKED_COUNT=$(wc -l < proxies/hijacked.txt 2>/dev/null || echo 0)
 
             git commit -m "chore: update proxy pool [$(date -u +%Y-%m-%d)]
 
@@ -70,7 +74,8 @@ jobs:
           socks4:       ${SOCKS4_COUNT} proxies
           socks5:       ${SOCKS5_COUNT} proxies
           elite:        ${ELITE_COUNT} proxies
-          google-pass:  ${GPASS_COUNT} proxies"
+          google-pass:  ${GPASS_COUNT} proxies
+          hijacked:     ${HIJACKED_COUNT} proxies"
 
             git push
           fi
