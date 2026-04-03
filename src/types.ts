@@ -2,6 +2,7 @@
 
 export type ProxyProtocol = 'http' | 'socks4' | 'socks5';
 export type AnonymityLevel = 'elite' | 'anonymous' | 'transparent' | 'unknown';
+export type SpeedTier = 'turbo' | 'fast' | 'medium' | 'slow';
 export type HijackType =
   | 'ad_injection'
   | 'redirect'
@@ -94,6 +95,18 @@ export interface PoolStatsResponse {
   avg_reliability_pct: number;
   by_protocol: ProtocolBreakdown[];
   last_updated: number | null;
+  source_quality?: SourceQuality[];
+}
+
+/** Per-source quality metrics stored in data/stats.json. */
+export interface SourceQuality {
+  source: string;
+  total: number;
+  alive: number;
+  elite: number;
+  google_pass: number;
+  avg_latency_ms: number | null;
+  alive_pct: number;
 }
 
 export interface ProtocolBreakdown {

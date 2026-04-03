@@ -13,6 +13,7 @@ import type {
   ProxyProtocol,
   HijackType,
   HijackedProxyResponse,
+  SourceQuality,
 } from '../types.js';
 import { createLogger } from '../utils/logger.js';
 
@@ -266,4 +267,53 @@ export function queryHijacked(): HijackedProxyResponse[] {
     asn: r.asn,
     detected_at: r.last_checked,
   }));
+}
+
+/**
+ * Return alive, non-hijacked proxies within a latency range, ordered by latency ASC.
+ * Used to populate the by-speed/ tier exports.
+ */
+export function queryProxyByLatencyRange(
+  minLatencyMs: number,
+  maxLatencyMs: number,
+): ProxyResponse[] {
+  const db = getDb();
+
+  const rows = db
+    .prepare(
+      `SELECT * FROM proxy
+       WHERE alive = 1 AND hijacked = 0
+         AND latency_ms >= @min AND latency_ms <= @max
+       ORDER BY latency_ms ASC`,
+    )
+    .all({ min: minLatencyMs, max: maxLatencyMs }) as ProxyRow[];
+
+  return rows.map(rowToResponse);
+}
+
+/**
+ * Return per-source quality metrics, ordered by alive_pct DESC.
+ * Used to populate the source_quality field in data/stats.json.
+ */
+export function getSourceQuality(): SourceQuality[] {
+  const db = getDb();
+
+  const rows = db
+    .prepare(
+      `SELECT
+         source,
+         COUNT(*) as total,
+         SUM(CASE WHEN alive = 1 THEN 1 ELSE 0 END) as alive,
+         SUM(CASE WHEN anonymity = 'elite' AND alive = 1 THEN 1 ELSE 0 END) as elite,
+         SUM(CASE WHEN google_pass = 1 AND alive = 1 THEN 1 ELSE 0 END) as google_pass,
+         AVG(CASE WHEN alive = 1 AND latency_ms >= 0 THEN latency_ms ELSE NULL END) as avg_latency_ms,
+         ROUND(CAST(SUM(CASE WHEN alive = 1 THEN 1 ELSE 0 END) AS REAL) / COUNT(*) * 100, 1) as alive_pct
+       FROM proxy
+       WHERE source IS NOT NULL
+       GROUP BY source
+       ORDER BY alive_pct DESC`,
+    )
+    .all() as SourceQuality[];
+
+  return rows;
 }

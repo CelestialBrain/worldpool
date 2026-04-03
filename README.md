@@ -1,5 +1,14 @@
 # 🌐 Worldpool
 
+<!-- BADGES_START -->
+![Alive](https://img.shields.io/badge/alive-1061-brightgreen)
+![Google Pass](https://img.shields.io/badge/google--pass-334-blue)
+![Hijacked Blocked](https://img.shields.io/badge/hijacked--blocked-837-red)
+![Avg Latency](https://img.shields.io/badge/avg--latency-8404ms-yellow)
+![Reliability](https://img.shields.io/badge/reliability-72.3%25-purple)
+![Updated](https://img.shields.io/badge/updated-2026--04--03-lightgrey)
+<!-- BADGES_END -->
+
 **Global proxy pool. Self-maintaining, free, open.**
 
 Worldpool is an automated proxy aggregation, validation, and serving pipeline. It continuously scrapes free proxy sources across the internet, validates them for liveness, anonymity, latency, and Google-pass capability, then serves the curated pool via a REST API and flat-file exports.
@@ -61,15 +70,22 @@ Updated automatically every 6 hours via GitHub Actions.
 | [`proxies/hijacked.txt`](proxies/hijacked.txt) | Hijacked proxy IPs, `host:port` per line |
 | [`proxies/hijacked.json`](proxies/hijacked.json) | Full hijacked proxy details with classification |
 | [`proxies/malicious-asn.txt`](proxies/malicious-asn.txt) | ASNs ranked by hijacked proxy count |
+| [`proxies/by-anonymity/elite.txt`](proxies/by-anonymity/elite.txt) | Elite anonymity proxies |
+| [`proxies/by-anonymity/anonymous.txt`](proxies/by-anonymity/anonymous.txt) | Anonymous (non-elite) proxies |
+| [`proxies/by-speed/turbo.txt`](proxies/by-speed/turbo.txt) | Ultra-fast proxies (&lt;200ms) |
+| [`proxies/by-speed/fast.txt`](proxies/by-speed/fast.txt) | Fast proxies (200–500ms) |
+| [`proxies/by-speed/medium.txt`](proxies/by-speed/medium.txt) | Medium latency (500–2000ms) |
+| [`proxies/by-speed/slow.txt`](proxies/by-speed/slow.txt) | Slow proxies (&gt;2000ms) |
 
 ### Structured Data
 
 | File | Description |
 |------|-------------|
 | [`data/proxies.json`](data/proxies.json) | Full proxy list with metadata (protocol, anonymity, latency, country) |
-| [`data/stats.json`](data/stats.json) | Pool health snapshot (counts, avg latency, breakdown by protocol) |
+| [`data/stats.json`](data/stats.json) | Pool health snapshot (counts, avg latency, breakdown by protocol, source quality) |
 | [`data/scan-targets.txt`](data/scan-targets.txt) | IP ranges for the active scanner |
 | [`data/scan-exclude.txt`](data/scan-exclude.txt) | IPs/CIDRs excluded from scanning (opt-out list) |
+| [`CHANGELOG.md`](CHANGELOG.md) | Auto-appended run history (alive delta, hijacked, google pass, latency) |
 
 ---
 
