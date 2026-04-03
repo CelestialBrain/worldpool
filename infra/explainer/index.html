@@ -198,10 +198,14 @@
       </p>
       <form id="optout-form">
         <label for="entry">IP address or CIDR (e.g. <code>203.0.113.5</code> or <code>203.0.113.0/24</code>)</label>
-        <input type="text" id="entry" name="entry" placeholder="203.0.113.0/24" autocomplete="off" spellcheck="false" />
+        <input type="text" id="entry" name="entry" placeholder="203.0.113.0/24" autocomplete="off" spellcheck="false"
+               aria-describedby="entry-hint" />
+        <p id="entry-hint" style="font-size:0.8rem;color:#484f58;margin-bottom:0.75rem;">
+          Enter a single IP address or a CIDR range to permanently exclude from scanning.
+        </p>
         <button type="submit">Submit opt-out</button>
       </form>
-      <div id="optout-result"></div>
+      <div id="optout-result" aria-live="polite"></div>
     </section>
 
   </main>

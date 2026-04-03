@@ -69,7 +69,7 @@ async function trySocks5(host: string, port: number, timeoutMs: number): Promise
  * Returns true if the server responds with a SOCKS4 reply (0x00 prefix).
  */
 async function trySocks4(host: string, port: number, timeoutMs: number): Promise<boolean> {
-  // VER=4, CMD=CONNECT, DSTPORT=80, DSTIP=0.0.0.0, USERID=\0
+  // VER=4, CMD=CONNECT, DSTPORT=0x0050 (port 80 in network byte order), DSTIP=0.0.0.0, USERID=\0
   const request = Buffer.from([0x04, 0x01, 0x00, 0x50, 0x00, 0x00, 0x00, 0x01, 0x00]);
   const response = await sendAndReceive(host, port, request, timeoutMs);
   if (!response || response.length < 2) return false;

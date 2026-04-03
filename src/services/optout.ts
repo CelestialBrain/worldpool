@@ -12,8 +12,12 @@ const log = createLogger('service:optout');
 
 /** Validates a single dotted-decimal IPv4 address. */
 function isValidIp(ip: string): boolean {
-  return /^(\d{1,3}\.){3}\d{1,3}$/.test(ip) &&
-    ip.split('.').every((octet) => parseInt(octet, 10) <= 255);
+  if (!/^(\d{1,3}\.){3}\d{1,3}$/.test(ip)) return false;
+  return ip.split('.').every((octet) => {
+    // Reject leading zeros (e.g. '01', '001') to avoid octal misinterpretation
+    if (octet.length > 1 && octet.startsWith('0')) return false;
+    return parseInt(octet, 10) <= 255;
+  });
 }
 
 /** Validates a CIDR notation string (e.g. "10.0.0.0/8"). */
@@ -74,8 +78,8 @@ optout.post('/optout', async (c) => {
     if (typeof ip !== 'string' || !isValidIp(ip)) {
       return c.json({ ok: false, error: 'Invalid IP address' }, 400);
     }
-    appendExclusion(`${ip}/32`);
-    return c.json({ ok: true, added: `${ip}/32` });
+    appendExclusion(ip);
+    return c.json({ ok: true, added: ip });
   }
 
   return c.json({ ok: false, error: 'Provide either "ip" or "cidr" in the request body' }, 400);

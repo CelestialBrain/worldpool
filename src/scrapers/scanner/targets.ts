@@ -42,9 +42,9 @@ export function expandCidr(cidr: string): string[] {
   const baseInt = ipToInt(base) & (~0 << (32 - prefix)) >>> 0;
   const count = 1 << (32 - prefix); // 2^(32-prefix)
 
-  // For host ranges (/31 and smaller), skip network and broadcast addresses
-  const start = prefix < 31 ? baseInt + 1 : baseInt;
-  const end = prefix < 31 ? baseInt + count - 2 : baseInt + count - 1;
+  // For host ranges (/31 uses both addresses per RFC 3021, so only skip for /30 and smaller)
+  const start = prefix <= 30 ? baseInt + 1 : baseInt;
+  const end = prefix <= 30 ? baseInt + count - 2 : baseInt + count - 1;
 
   const ips: string[] = [];
   for (let i = start; i <= end; i++) {

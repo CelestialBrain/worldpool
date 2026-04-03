@@ -97,9 +97,10 @@ export async function probeBatch(
         return;
       }
 
-      // If rate limit hit but work remains, retry after 1 ms
+      // If rate limit hit but work remains, schedule retry for the next second window
       if (idx < targets.length && ratePps > 0 && probesThisSecond >= ratePps) {
-        setTimeout(tryNext, 1);
+        const msUntilNextWindow = Math.max(1, 1000 - (Date.now() - windowStart));
+        setTimeout(tryNext, msUntilNextWindow);
       }
     };
 
