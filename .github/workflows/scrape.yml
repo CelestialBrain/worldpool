@@ -48,6 +48,9 @@ jobs:
           VALIDATOR_CONCURRENCY: '150'
           VALIDATOR_TIMEOUT_MS: '5000'
           SKIP_GOOGLE_PASS: 'false'
+          SHODAN_API_KEY: ${{ secrets.SHODAN_API_KEY }}
+          CENSYS_API_ID: ${{ secrets.CENSYS_API_ID }}
+          CENSYS_API_SECRET: ${{ secrets.CENSYS_API_SECRET }}
 
       - name: Commit updated proxy files
         run: |
