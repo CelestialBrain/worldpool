@@ -7,6 +7,7 @@ import { config } from './config.js';
 import proxyRoutes from './routes/proxy.js';
 import statsRoutes from './routes/stats.js';
 import adminRoutes from './routes/admin.js';
+import optoutRoutes from './services/optout.js';
 import { createLogger } from './utils/logger.js';
 
 const log = createLogger('server');
@@ -20,6 +21,7 @@ app.get('/', (c) => c.json({ name: 'worldpool', status: 'ok' }));
 app.route('/', proxyRoutes);
 app.route('/', statsRoutes);
 app.route('/', adminRoutes);
+app.route('/', optoutRoutes);
 
 serve({ fetch: app.fetch, port: config.port }, (info) => {
   log.info(`Worldpool server running`, { port: info.port });

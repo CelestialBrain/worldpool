@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>You were scanned by Worldpool</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #58a6ff;
+      margin-bottom: 0.5rem;
+    }
+
+    header p.subtitle {
+      color: #8b949e;
+      font-size: 1rem;
+    }
+
+    main {
+      max-width: 680px;
+      width: 100%;
+    }
+
+    section {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    section h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #f0f6fc;
+      margin-bottom: 0.75rem;
+    }
+
+    section p, section li {
+      font-size: 0.95rem;
+      color: #8b949e;
+      line-height: 1.6;
+    }
+
+    section ul {
+      padding-left: 1.25rem;
+    }
+
+    section ul li {
+      margin-bottom: 0.35rem;
+    }
+
+    a {
+      color: #58a6ff;
+      text-decoration: none;
+    }
+
+    a:hover { text-decoration: underline; }
+
+    .badge {
+      display: inline-block;
+      background: #1f6feb;
+      color: #e6edf3;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.2rem 0.6rem;
+      border-radius: 20px;
+      margin-left: 0.4rem;
+      vertical-align: middle;
+    }
+
+    form label {
+      display: block;
+      font-size: 0.875rem;
+      color: #8b949e;
+      margin-bottom: 0.4rem;
+    }
+
+    form input[type="text"] {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      color: #e6edf3;
+      font-size: 0.95rem;
+      margin-bottom: 0.75rem;
+      outline: none;
+    }
+
+    form input[type="text"]:focus {
+      border-color: #58a6ff;
+    }
+
+    form button {
+      padding: 0.5rem 1.25rem;
+      background: #238636;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    form button:hover { background: #2ea043; }
+
+    #optout-result {
+      margin-top: 0.75rem;
+      font-size: 0.875rem;
+    }
+
+    #optout-result.success { color: #3fb950; }
+    #optout-result.error   { color: #f85149; }
+
+    footer {
+      margin-top: 2rem;
+      font-size: 0.8rem;
+      color: #484f58;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>You were scanned by Worldpool</h1>
+    <p class="subtitle">Open-source proxy intelligence &mdash; we never exploit, authenticate, or store personal data.</p>
+  </header>
+
+  <main>
+
+    <section>
+      <h2>What is Worldpool?</h2>
+      <p>
+        Worldpool is an open-source threat intelligence project that maintains a continuously updated
+        list of open proxies on the internet. It helps security researchers, network operators, and
+        developers identify misconfigured or malicious proxy servers that could be used to relay
+        traffic or conduct attacks.
+      </p>
+      <p style="margin-top: 0.75rem;">
+        The full source code is publicly available on
+        <a href="https://github.com/CelestialBrain/worldpool" target="_blank" rel="noopener">
+          GitHub &rarr; CelestialBrain/worldpool
+        </a>
+      </p>
+    </section>
+
+    <section>
+      <h2>Why was my IP scanned?</h2>
+      <p>
+        Your IP address falls within a range commonly associated with datacenter infrastructure,
+        cloud providers, or ASNs that historically host open proxy servers. The scanner probed
+        common proxy ports (1080, 3128, 8080) to check whether a publicly accessible proxy is
+        running.
+      </p>
+    </section>
+
+    <section>
+      <h2>What data was collected?</h2>
+      <ul>
+        <li>IP address and port number</li>
+        <li>Whether the port was open (TCP connect only)</li>
+        <li>Proxy protocol type (SOCKS4, SOCKS5, HTTP) if confirmed</li>
+        <li>Country and ASN (via offline GeoIP database)</li>
+      </ul>
+      <p style="margin-top: 0.75rem;">
+        <strong style="color: #f0f6fc;">We collect metadata only.</strong>
+        We never authenticate, never send real traffic through your host, never exploit any
+        vulnerability, and never store personal data.
+      </p>
+    </section>
+
+    <section>
+      <h2>Opt out <span class="badge">Free</span></h2>
+      <p style="margin-bottom: 1rem;">
+        Submit your IP address or CIDR range below to be permanently excluded from all future scans.
+        Your entry is appended to our public opt-out list within seconds.
+      </p>
+      <form id="optout-form">
+        <label for="entry">IP address or CIDR (e.g. <code>203.0.113.5</code> or <code>203.0.113.0/24</code>)</label>
+        <input type="text" id="entry" name="entry" placeholder="203.0.113.0/24" autocomplete="off" spellcheck="false"
+               aria-describedby="entry-hint" />
+        <p id="entry-hint" style="font-size:0.8rem;color:#484f58;margin-bottom:0.75rem;">
+          Enter a single IP address or a CIDR range to permanently exclude from scanning.
+        </p>
+        <button type="submit">Submit opt-out</button>
+      </form>
+      <div id="optout-result" aria-live="polite"></div>
+    </section>
+
+  </main>
+
+  <footer>
+    &copy; Worldpool contributors &mdash;
+    <a href="https://github.com/CelestialBrain/worldpool" target="_blank" rel="noopener">View on GitHub</a>
+  </footer>
+
+  <script>
+    document.getElementById('optout-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const entry = document.getElementById('entry').value.trim();
+      const result = document.getElementById('optout-result');
+      result.textContent = '';
+      result.className = '';
+
+      if (!entry) {
+        result.textContent = 'Please enter an IP address or CIDR range.';
+        result.className = 'error';
+        return;
+      }
+
+      const body = entry.includes('/') ? { cidr: entry } : { ip: entry };
+
+      try {
+        const res = await fetch('/optout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          result.textContent = `✓ ${data.added} has been added to the opt-out list.`;
+          result.className = 'success';
+        } else {
+          result.textContent = `Error: ${data.error}`;
+          result.className = 'error';
+        }
+      } catch (err) {
+        result.textContent = 'Request failed — please try again later.';
+        result.className = 'error';
+      }
+    });
+  </script>
+
+</body>
+</html>

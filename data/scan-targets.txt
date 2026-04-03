@@ -1,0 +1,12 @@
+# Known high-density proxy ASN ranges
+# These are datacenter/cloud ranges where misconfigured proxies commonly appear
+# Start small — targeted scanning is 1000x more efficient than sweeping everything
+
+# Cheap datacenter space — high misconfiguration rate
+45.0.0.0/16
+185.0.0.0/16
+103.0.0.0/16
+
+# Known proxy-heavy ranges (sample — expand over time)
+36.0.0.0/16
+112.0.0.0/16
