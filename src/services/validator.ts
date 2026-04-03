@@ -71,9 +71,10 @@ const AD_NETWORK_PATTERNS = [
   '<script', '<iframe', 'doubleclick.net', 'googlesyndication.com',
   'adservice.google', 'amazon-adsystem.com', 'ads.yahoo.com',
   'pagead2.googlesyndication', 'adnxs.com', 'taboola.com', 'outbrain.com',
+  'popads.net',
 ];
 
-const CAPTIVE_PORTAL_PATTERNS = ['<form', '<input', 'password', 'login'];
+const CAPTIVE_PORTAL_PATTERNS = ['<form', '<input', 'password', 'login', 'captive', 'portal', 'authenticate'];
 
 type HijackResult =
   | { hijacked: false }
@@ -110,7 +111,7 @@ async function checkHijacked(
 
     // ── Redirect detection ────────────────────────────────────────────────
     if (
-      (res.status === 301 || res.status === 302) &&
+      ([301, 302, 307, 308].includes(res.status)) ||
       res.headers['location'] !== undefined
     ) {
       return { hijacked: true, hijack_type: 'redirect', hijack_body };
