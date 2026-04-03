@@ -8,6 +8,7 @@ import { scrape as thespeedx } from './thespeedx.js';
 import { scrape as proxifly } from './proxifly.js';
 import { scrape as shodan } from './shodan.js';
 import { scrape as censys } from './censys.js';
+import { scrape as scanner } from './scanner/index.js';
 import type { RawProxy } from '../types.js';
 import { createLogger } from '../utils/logger.js';
 
@@ -21,9 +22,10 @@ export async function scrapeAll(): Promise<RawProxy[]> {
     proxifly(),
     shodan(),
     censys(),
+    scanner(),
   ]);
 
-  const sourceNames = ['proxyscrape', 'geonode', 'thespeedx', 'proxifly', 'shodan', 'censys'];
+  const sourceNames = ['proxyscrape', 'geonode', 'thespeedx', 'proxifly', 'shodan', 'censys', 'scanner'];
   const allProxies: RawProxy[] = [];
 
   for (let i = 0; i < results.length; i++) {

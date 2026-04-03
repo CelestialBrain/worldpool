@@ -54,4 +54,19 @@ export const config = {
     apiSecret: process.env.CENSYS_API_SECRET ?? '',
     maxPages: parseInt(process.env.CENSYS_MAX_PAGES ?? '3', 10),
   },
+
+  // ─── Scanner ──────────────────────────────────────────────────────────
+  // Disabled by default — flip SCANNER_ENABLED=true to enable active probing.
+  scanner: {
+    enabled: process.env.SCANNER_ENABLED === 'true',
+    ratePps: parseInt(process.env.SCANNER_RATE_PPS ?? '500', 10),
+    concurrency: parseInt(process.env.SCANNER_CONCURRENCY ?? '100', 10),
+    ports: (process.env.SCANNER_PORTS ?? '1080,3128,8080')
+      .split(',')
+      .map((p) => parseInt(p.trim(), 10))
+      .filter((p) => !isNaN(p)),
+    timeoutMs: parseInt(process.env.SCANNER_TIMEOUT_MS ?? '2000', 10),
+    targetsFile: process.env.SCANNER_TARGETS_FILE ?? 'data/scan-targets.txt',
+    excludeFile: process.env.SCANNER_EXCLUDE_FILE ?? 'data/scan-exclude.txt',
+  },
 } as const;
