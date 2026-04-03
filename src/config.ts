@@ -11,8 +11,9 @@ export const config = {
   // ─── Validator ────────────────────────────────────────────────────────
   validator: {
     concurrency: parseInt(process.env.VALIDATOR_CONCURRENCY ?? '100', 10),
-    timeoutMs: parseInt(process.env.VALIDATOR_TIMEOUT_MS ?? '8000', 10),
+    timeoutMs: parseInt(process.env.VALIDATOR_TIMEOUT_MS ?? '5000', 10),
     maxMemoryPercent: 80,   // pause validation if memory exceeds this
+    skipGooglePass: process.env.SKIP_GOOGLE_PASS === 'true',
   },
 
   // ─── Judge Server ─────────────────────────────────────────────────────

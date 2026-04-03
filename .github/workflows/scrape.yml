@@ -11,7 +11,7 @@ permissions:
 jobs:
   update-pool:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
@@ -42,8 +42,9 @@ jobs:
           NODE_ENV: production
           JUDGE_URL: ${{ secrets.JUDGE_URL }}
           JUDGE_TOKEN: ${{ secrets.JUDGE_TOKEN }}
-          VALIDATOR_CONCURRENCY: '100'
-          VALIDATOR_TIMEOUT_MS: '8000'
+          VALIDATOR_CONCURRENCY: '150'
+          VALIDATOR_TIMEOUT_MS: '5000'
+          SKIP_GOOGLE_PASS: 'false'
 
       - name: Commit updated proxy files
         run: |
