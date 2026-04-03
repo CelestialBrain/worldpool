@@ -161,6 +161,16 @@ npm run dev
 npm start
 ```
 
+### MaxMind GeoLite2 (optional)
+
+For offline IP geolocation, download the free GeoLite2-Country database:
+
+1. Sign up at [maxmind.com](https://www.maxmind.com/en/geolite2/signup) for a free account
+2. Generate a license key and add it as the `MAXMIND_LICENSE_KEY` secret in your repo settings
+3. The GitHub Actions pipeline will automatically download and use the database
+
+Without the database, the pipeline runs normally — proxies will use country data from the scrapers where available.
+
 ---
 
 ## Stack
@@ -172,6 +182,7 @@ npm start
 | Database | SQLite (better-sqlite3) |
 | Proxy Agents | proxy-agent (auto-detect protocol) |
 | Concurrency | p-limit + worker_threads |
+| Geolocation | MaxMind GeoLite2-Country (offline, zero-latency) |
 | Scheduling | GitHub Actions cron / node-cron |
 | CI/CD | GitHub Actions |
 
@@ -180,6 +191,7 @@ npm start
 ## Security
 
 - **Judge server** requires `X-Judge-Token` header — only responds to validated requests
+- **Hijack detection** — each live proxy is probed against a known endpoint; if the response is tampered (ads injected, JSON malformed, wrong fields), the proxy is flagged `hijacked = true` and never served
 - **Validator runs on isolated infra** — never share with production apps
 - **Concurrency hard-capped** at 100 to prevent OOM on constrained nodes
 - **All proxy responses** are try/catch guarded — malicious payloads can't crash the validator

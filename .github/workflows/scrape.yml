@@ -26,6 +26,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Download GeoLite2 database
+        if: env.MAXMIND_LICENSE_KEY != ''
+        run: |
+          mkdir -p data
+          curl -sSL "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-Country&license_key=${MAXMIND_LICENSE_KEY}&suffix=tar.gz" -o geolite2.tar.gz
+          tar -xzf geolite2.tar.gz --strip-components=1 -C data/ --wildcards '*.mmdb'
+          rm geolite2.tar.gz
+        env:
+          MAXMIND_LICENSE_KEY: ${{ secrets.MAXMIND_LICENSE_KEY }}
+
       - name: Run pipeline
         run: npm run pipeline
         env:

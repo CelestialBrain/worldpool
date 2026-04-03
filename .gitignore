@@ -6,6 +6,9 @@ node_modules/
 *.db-wal
 *.db-shm
 
+# MaxMind GeoLite2 database (downloaded at runtime)
+*.mmdb
+
 # Environment
 .env
 .env.local

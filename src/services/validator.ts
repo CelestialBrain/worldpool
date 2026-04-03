@@ -11,6 +11,7 @@ import type { Agent } from 'http';
 import type { RawProxy, ValidatedProxy, AnonymityLevel } from '../types.js';
 import { config } from '../config.js';
 import { createLogger } from '../utils/logger.js';
+import { initGeo, lookupCountry } from './geolocator.js';
 
 const log = createLogger('validator');
 
@@ -66,6 +67,41 @@ function classifyAnonymity(
   return 'elite';
 }
 
+/**
+ * Send a request through the proxy to a known endpoint and verify the response
+ * matches the expected structure. Returns true if the response was tampered.
+ */
+async function checkHijacked(
+  httpAgent: Agent,
+  httpsAgent: Agent,
+): Promise<boolean> {
+  try {
+    const res = await axios.get<unknown>('http://httpbin.org/get', {
+      httpAgent,
+      httpsAgent,
+      timeout: config.validator.timeoutMs,
+      validateStatus: () => true,
+    });
+
+    // Verify the response is valid JSON with expected httpbin fields.
+    // Hijacked proxies often return HTML, ads, or inject extra content.
+    if (res.status !== 200) return true;
+
+    const body = res.data as Record<string, unknown>;
+    if (typeof body !== 'object' || body === null) return true;
+
+    // A legitimate httpbin /get response always has 'origin' and 'headers'.
+    const hasOrigin = 'origin' in body;
+    const hasHeaders = 'headers' in body && typeof body['headers'] === 'object';
+    if (!hasOrigin || !hasHeaders) return true;
+
+    return false;
+  } catch {
+    // Network failure during hijack check — don't penalise the proxy.
+    return false;
+  }
+}
+
 export async function validateProxy(proxy: RawProxy): Promise<ValidatedProxy> {
   const proxyUrl = buildProxyUrl(proxy);
   const proxyId = `${proxy.host}:${proxy.port}`;
@@ -80,6 +116,7 @@ export async function validateProxy(proxy: RawProxy): Promise<ValidatedProxy> {
     latency_ms: -1,
     google_pass: false,
     alive: false,
+    hijacked: false,
     country: proxy.country,
     source: proxy.source,
     last_checked: now,
@@ -127,6 +164,18 @@ export async function validateProxy(proxy: RawProxy): Promise<ValidatedProxy> {
     const myIp = await getOwnIp();
     const anonymity = classifyAnonymity(judgeHeaders, myIp);
 
+    // ── Geo lookup ─────────────────────────────────────────────────────
+    const geoCountry = lookupCountry(proxy.host);
+    const country = geoCountry ?? proxy.country;
+
+    // ── Hijack detection ───────────────────────────────────────────────
+    const hijacked = await checkHijacked(httpAgent, httpsAgent);
+
+    if (hijacked) {
+      // Tracked in DB but never served
+      return { ...base, alive: false, hijacked: true, country };
+    }
+
     // ── Google pass ────────────────────────────────────────────────────
     let googlePass = false;
     try {
@@ -148,6 +197,8 @@ export async function validateProxy(proxy: RawProxy): Promise<ValidatedProxy> {
       latency_ms: latency,
       anonymity,
       google_pass: googlePass,
+      hijacked: false,
+      country,
     };
   } catch (err) {
     log.debug(`Validation failed for ${proxyId}`, { error: String(err) });
@@ -162,14 +213,19 @@ export async function validateAll(proxies: RawProxy[]): Promise<ValidatedProxy[]
     concurrency: config.validator.concurrency,
   });
 
-  // Pre-warm own IP detection
-  await getOwnIp();
+  // Pre-warm own IP detection and geo database
+  await Promise.all([getOwnIp(), initGeo(config.geo.mmdbPath)]);
 
   const tasks = proxies.map((proxy) => limit(() => validateProxy(proxy)));
   const results = await Promise.all(tasks);
 
   const alive = results.filter((r) => r.alive);
-  log.info(`Validation complete`, { total: results.length, alive: alive.length });
+  const hijacked = results.filter((r) => r.hijacked);
+  log.info(`Validation complete`, {
+    total: results.length,
+    alive: alive.length,
+    hijacked: hijacked.length,
+  });
 
   return results;
 }
