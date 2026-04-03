@@ -26,18 +26,26 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Download GeoLite2 database
-        if: ${{ secrets.MAXMIND_LICENSE_KEY != '' }}
+      - name: Download GeoLite2 databases
         run: |
           mkdir -p data
-          curl -sSL "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-Country&license_key=${MAXMIND_LICENSE_KEY}&suffix=tar.gz" -o geolite2.tar.gz
-          tar -xzf geolite2.tar.gz --strip-components=1 -C data/ --wildcards '*.mmdb'
-          rm geolite2.tar.gz
-          curl -sSL "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-ASN&license_key=${MAXMIND_LICENSE_KEY}&suffix=tar.gz" -o geolite2-asn.tar.gz
-          tar -xzf geolite2-asn.tar.gz --strip-components=1 -C data/ --wildcards '*.mmdb'
-          rm geolite2-asn.tar.gz
+          if [ -n "$MAXMIND_LICENSE_KEY" ]; then
+            for EDITION in GeoLite2-Country GeoLite2-City GeoLite2-ASN; do
+              curl -fsSL \
+                "https://download.maxmind.com/app/geoip_download?edition_id=${EDITION}&license_key=${MAXMIND_LICENSE_KEY}&suffix=tar.gz" \
+                -u "${MAXMIND_ACCOUNT_ID}:${MAXMIND_LICENSE_KEY}" \
+                -o ${EDITION}.tar.gz
+              tar -xzf ${EDITION}.tar.gz
+              mv ${EDITION}_*/${EDITION}.mmdb data/${EDITION}.mmdb
+              rm -rf ${EDITION}.tar.gz ${EDITION}_*/
+              echo "✓ ${EDITION} downloaded"
+            done
+          else
+            echo "MAXMIND_LICENSE_KEY not set — skipping GeoLite2 download"
+          fi
         env:
           MAXMIND_LICENSE_KEY: ${{ secrets.MAXMIND_LICENSE_KEY }}
+          MAXMIND_ACCOUNT_ID: ${{ secrets.MAXMIND_ACCOUNT_ID }}
 
       - name: Run pipeline
         run: npm run pipeline
