@@ -178,17 +178,19 @@ export async function validateProxy(proxy: RawProxy): Promise<ValidatedProxy> {
 
     // ── Google pass ────────────────────────────────────────────────────
     let googlePass = false;
-    try {
-      const { httpAgent: gHttp, httpsAgent: gHttps } = buildAgent(proxyUrl, proxy.protocol);
-      const gRes = await axios.get('https://www.google.com/generate_204', {
-        httpAgent: gHttp,
-        httpsAgent: gHttps,
-        timeout: config.validator.timeoutMs,
-        validateStatus: () => true,
-      });
-      googlePass = gRes.status === 204;
-    } catch {
-      googlePass = false;
+    if (!config.validator.skipGooglePass) {
+      try {
+        const { httpAgent: gHttp, httpsAgent: gHttps } = buildAgent(proxyUrl, proxy.protocol);
+        const gRes = await axios.get('https://www.google.com/generate_204', {
+          httpAgent: gHttp,
+          httpsAgent: gHttps,
+          timeout: config.validator.timeoutMs,
+          validateStatus: () => true,
+        });
+        googlePass = gRes.status === 204;
+      } catch {
+        googlePass = false;
+      }
     }
 
     return {
@@ -211,20 +213,59 @@ export async function validateAll(proxies: RawProxy[]): Promise<ValidatedProxy[]
 
   log.info(`Validating ${proxies.length} proxies`, {
     concurrency: config.validator.concurrency,
+    timeout_ms: config.validator.timeoutMs,
   });
 
   // Pre-warm own IP detection and geo database
   await Promise.all([getOwnIp(), initGeo(config.geo.mmdbPath)]);
 
-  const tasks = proxies.map((proxy) => limit(() => validateProxy(proxy)));
-  const results = await Promise.all(tasks);
+  let completed = 0;
+  let aliveCount = 0;
+  let hijackedCount = 0;
+  const results: ValidatedProxy[] = [];
 
-  const alive = results.filter((r) => r.alive);
-  const hijacked = results.filter((r) => r.hijacked);
+  // Heartbeat every 30s — prevents Actions from killing "silent" jobs
+  const heartbeat = setInterval(() => {
+    log.info(`Heartbeat`, {
+      completed,
+      total: proxies.length,
+      pct: ((completed / proxies.length) * 100).toFixed(1) + '%',
+      alive: aliveCount,
+      hijacked: hijackedCount,
+    });
+  }, 30_000);
+
+  try {
+    const tasks = proxies.map((proxy) =>
+      limit(async () => {
+        const result = await validateProxy(proxy);
+        completed++;
+        if (result.alive) aliveCount++;
+        if (result.hijacked) hijackedCount++;
+        results.push(result);
+
+        // Log progress every 100 proxies
+        if (completed % 100 === 0 || completed === proxies.length) {
+          log.info(`Progress`, {
+            completed,
+            total: proxies.length,
+            pct: ((completed / proxies.length) * 100).toFixed(1) + '%',
+            alive: aliveCount,
+            hijacked: hijackedCount,
+          });
+        }
+      })
+    );
+
+    await Promise.all(tasks);
+  } finally {
+    clearInterval(heartbeat);
+  }
+
   log.info(`Validation complete`, {
     total: results.length,
-    alive: alive.length,
-    hijacked: hijacked.length,
+    alive: aliveCount,
+    hijacked: hijackedCount,
   });
 
   return results;
