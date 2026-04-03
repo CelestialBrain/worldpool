@@ -11,6 +11,8 @@ import type {
   ProxyRow,
   ProtocolBreakdown,
   ProxyProtocol,
+  HijackType,
+  HijackedProxyResponse,
 } from '../types.js';
 import { createLogger } from '../utils/logger.js';
 
@@ -38,16 +40,19 @@ export function upsertProxy(proxies: ValidatedProxy[]): void {
   const stmt = db.prepare(`
     INSERT INTO proxy
       (proxy_id, host, port, protocol, anonymity, latency_ms, google_pass, alive, hijacked,
-       country, source, last_checked, created_at)
+       hijack_type, hijack_body, asn, country, source, last_checked, created_at)
     VALUES
       (@proxy_id, @host, @port, @protocol, @anonymity, @latency_ms, @google_pass, @alive, @hijacked,
-       @country, @source, @last_checked, @created_at)
+       @hijack_type, @hijack_body, @asn, @country, @source, @last_checked, @created_at)
     ON CONFLICT(proxy_id) DO UPDATE SET
       anonymity    = excluded.anonymity,
       latency_ms   = excluded.latency_ms,
       google_pass  = excluded.google_pass,
       alive        = excluded.alive,
       hijacked     = excluded.hijacked,
+      hijack_type  = excluded.hijack_type,
+      hijack_body  = excluded.hijack_body,
+      asn          = excluded.asn,
       country      = excluded.country,
       source       = excluded.source,
       last_checked = excluded.last_checked
@@ -65,6 +70,9 @@ export function upsertProxy(proxies: ValidatedProxy[]): void {
         google_pass: p.google_pass ? 1 : 0,
         alive: p.alive ? 1 : 0,
         hijacked: p.hijacked ? 1 : 0,
+        hijack_type: p.hijack_type ?? null,
+        hijack_body: p.hijack_body ?? null,
+        asn: p.asn ?? null,
         country: p.country ?? null,
         source: p.source ?? null,
         last_checked: p.last_checked,
@@ -206,4 +214,39 @@ export function getStats(): PoolStatsResponse {
     by_protocol: byProtocol as ProtocolBreakdown[],
     last_updated: totals.last_updated ?? null,
   };
+}
+
+/**
+ * Return all hijacked proxies with their classification and body sample.
+ * Used to generate the threat-intel output files.
+ */
+export function queryHijacked(): HijackedProxyResponse[] {
+  const db = getDb();
+
+  const rows = db
+    .prepare(
+      `SELECT host, port, hijack_type, hijack_body, country, asn, last_checked
+       FROM proxy
+       WHERE hijacked = 1 AND hijack_type IS NOT NULL
+       ORDER BY last_checked DESC`,
+    )
+    .all() as Array<{
+    host: string;
+    port: number;
+    hijack_type: string;
+    hijack_body: string | null;
+    country: string | null;
+    asn: string | null;
+    last_checked: number;
+  }>;
+
+  return rows.map((r) => ({
+    ip: r.host,
+    port: r.port,
+    hijack_type: r.hijack_type as HijackType,
+    hijack_body: r.hijack_body,
+    country: r.country,
+    asn: r.asn,
+    detected_at: r.last_checked,
+  }));
 }

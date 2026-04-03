@@ -8,10 +8,10 @@ import { HttpProxyAgent } from 'http-proxy-agent';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import type { Agent } from 'http';
-import type { RawProxy, ValidatedProxy, AnonymityLevel } from '../types.js';
+import type { RawProxy, ValidatedProxy, AnonymityLevel, HijackType } from '../types.js';
 import { config } from '../config.js';
 import { createLogger } from '../utils/logger.js';
-import { initGeo, lookupCountry } from './geolocator.js';
+import { initGeo, initGeoAsn, lookupCountry, lookupAsn } from './geolocator.js';
 
 const log = createLogger('validator');
 
@@ -67,38 +67,117 @@ function classifyAnonymity(
   return 'elite';
 }
 
+const AD_NETWORK_PATTERNS = [
+  '<script', '<iframe', 'doubleclick.net', 'googlesyndication.com',
+  'adservice.google', 'amazon-adsystem.com', 'ads.yahoo.com',
+  'pagead2.googlesyndication', 'adnxs.com', 'taboola.com', 'outbrain.com',
+];
+
+const CAPTIVE_PORTAL_PATTERNS = ['<form', '<input', 'password', 'login'];
+
+type HijackResult =
+  | { hijacked: false }
+  | { hijacked: true; hijack_type: HijackType; hijack_body: string };
+
 /**
  * Send a request through the proxy to a known endpoint and verify the response
- * matches the expected structure. Returns true if the response was tampered.
+ * matches the expected structure. Returns a result object indicating whether
+ * the proxy is hijacked, and if so, classifies the type and captures a body
+ * sample (first 500 chars).
  */
 async function checkHijacked(
   httpAgent: Agent,
   httpsAgent: Agent,
-): Promise<boolean> {
+): Promise<HijackResult> {
   try {
     const res = await axios.get<unknown>('http://httpbin.org/get', {
       httpAgent,
       httpsAgent,
       timeout: config.validator.timeoutMs,
       validateStatus: () => true,
+      maxRedirects: 0,
     });
 
-    // Verify the response is valid JSON with expected httpbin fields.
-    // Hijacked proxies often return HTML, ads, or inject extra content.
-    if (res.status !== 200) return true;
+    const rawBody = res.data;
+    const bodyStr =
+      typeof rawBody === 'string'
+        ? rawBody
+        : typeof rawBody === 'object'
+          ? JSON.stringify(rawBody)
+          : String(rawBody);
+    const hijack_body = bodyStr.slice(0, 500);
+    const bodyLower = hijack_body.toLowerCase();
 
-    const body = res.data as Record<string, unknown>;
-    if (typeof body !== 'object' || body === null) return true;
+    // ── Redirect detection ────────────────────────────────────────────────
+    if (
+      (res.status === 301 || res.status === 302) &&
+      res.headers['location'] !== undefined
+    ) {
+      return { hijacked: true, hijack_type: 'redirect', hijack_body };
+    }
 
-    // A legitimate httpbin /get response always has 'origin' and 'headers'.
+    if (res.status !== 200) {
+      return { hijacked: true, hijack_type: 'content_substitution', hijack_body };
+    }
+
+    // ── Ad injection detection ────────────────────────────────────────────
+    // All patterns are already lowercase; bodyLower is already lowercased above.
+    if (AD_NETWORK_PATTERNS.some((p) => bodyLower.includes(p))) {
+      return { hijacked: true, hijack_type: 'ad_injection', hijack_body };
+    }
+
+    // ── Captive portal detection (HTML with login form) ───────────────────
+    if (
+      (bodyLower.includes('<html') || bodyLower.includes('<!doctype')) &&
+      CAPTIVE_PORTAL_PATTERNS.some((p) => bodyLower.includes(p))
+    ) {
+      return { hijacked: true, hijack_type: 'captive_portal', hijack_body };
+    }
+
+    // ── Structural validation (expected JSON shape) ───────────────────────
+    if (typeof rawBody !== 'object' || rawBody === null) {
+      return { hijacked: true, hijack_type: 'content_substitution', hijack_body };
+    }
+
+    const body = rawBody as Record<string, unknown>;
     const hasOrigin = 'origin' in body;
     const hasHeaders = 'headers' in body && typeof body['headers'] === 'object';
-    if (!hasOrigin || !hasHeaders) return true;
+    if (!hasOrigin || !hasHeaders) {
+      return { hijacked: true, hijack_type: 'content_substitution', hijack_body };
+    }
 
-    return false;
+    // ── SSL-strip detection (HTTPS request served over plain HTTP) ────────
+    try {
+      const httpsRes = await axios.get<unknown>('https://httpbin.org/get', {
+        httpAgent,
+        httpsAgent,
+        timeout: config.validator.timeoutMs,
+        validateStatus: () => true,
+      });
+
+      if (
+        httpsRes.status === 200 &&
+        typeof httpsRes.data === 'object' &&
+        httpsRes.data !== null
+      ) {
+        const httpsBody = httpsRes.data as Record<string, unknown>;
+        // httpbin echoes the URL as seen by the server in its 'url' field.
+        // An ssl_strip MITM intercepts the HTTPS request and forwards it as
+        // plain HTTP, so the server sees an http:// URL even though the client
+        // requested https://.
+        if (typeof httpsBody.url === 'string' && httpsBody.url.startsWith('http://')) {
+          const sslBodyStr = JSON.stringify(httpsRes.data).slice(0, 500);
+          return { hijacked: true, hijack_type: 'ssl_strip', hijack_body: sslBodyStr };
+        }
+      }
+    } catch {
+      // HTTPS check failure is not penalised — proxy may not support HTTPS.
+    }
+
+    return { hijacked: false };
   } catch {
     // Network failure during hijack check — don't penalise the proxy.
-    return false;
+    return { hijacked: false };
   }
 }
 
@@ -167,13 +246,22 @@ export async function validateProxy(proxy: RawProxy): Promise<ValidatedProxy> {
     // ── Geo lookup ─────────────────────────────────────────────────────
     const geoCountry = lookupCountry(proxy.host);
     const country = geoCountry ?? proxy.country;
+    const asn = lookupAsn(proxy.host) ?? undefined;
 
     // ── Hijack detection ───────────────────────────────────────────────
-    const hijacked = await checkHijacked(httpAgent, httpsAgent);
+    const hijackResult = await checkHijacked(httpAgent, httpsAgent);
 
-    if (hijacked) {
-      // Tracked in DB but never served
-      return { ...base, alive: false, hijacked: true, country };
+    if (hijackResult.hijacked) {
+      // Persisted to DB with classification — never served to API clients
+      return {
+        ...base,
+        alive: false,
+        hijacked: true,
+        hijack_type: hijackResult.hijack_type,
+        hijack_body: hijackResult.hijack_body,
+        country,
+        asn,
+      };
     }
 
     // ── Google pass ────────────────────────────────────────────────────
@@ -200,6 +288,7 @@ export async function validateProxy(proxy: RawProxy): Promise<ValidatedProxy> {
       anonymity,
       google_pass: googlePass,
       hijacked: false,
+      asn,
       country,
     };
   } catch (err) {
@@ -217,7 +306,7 @@ export async function validateAll(proxies: RawProxy[]): Promise<ValidatedProxy[]
   });
 
   // Pre-warm own IP detection and geo database
-  await Promise.all([getOwnIp(), initGeo(config.geo.mmdbPath)]);
+  await Promise.all([getOwnIp(), initGeo(config.geo.mmdbPath), initGeoAsn(config.geo.asnMmdbPath)]);
 
   let completed = 0;
   let aliveCount = 0;

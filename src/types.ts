@@ -2,6 +2,12 @@
 
 export type ProxyProtocol = 'http' | 'socks4' | 'socks5';
 export type AnonymityLevel = 'elite' | 'anonymous' | 'transparent' | 'unknown';
+export type HijackType =
+  | 'ad_injection'
+  | 'redirect'
+  | 'captive_portal'
+  | 'content_substitution'
+  | 'ssl_strip';
 
 // ─── Scraper Output ───────────────────────────────────────────────────────────
 
@@ -27,6 +33,9 @@ export interface ProxyRow {
   google_pass: number;    // 0 | 1 (SQLite boolean)
   alive: number;          // 0 | 1
   hijacked: number;       // 0 | 1
+  hijack_type: string | null;
+  hijack_body: string | null;
+  asn: string | null;
   country: string | null;
   source: string | null;
   last_checked: number;   // unix epoch seconds
@@ -46,6 +55,9 @@ export interface ValidatedProxy {
   google_pass: boolean;
   alive: boolean;
   hijacked: boolean;
+  hijack_type?: HijackType;
+  hijack_body?: string;
+  asn?: string;
   country?: string;
   source?: string;
   last_checked: number;
@@ -94,4 +106,17 @@ export interface ProxyQueryOption {
   max_latency_ms?: number;
   limit?: number;
   offset?: number;
+}
+
+// ─── Hijacked Proxy Output ────────────────────────────────────────────────────
+
+/** Full-detail record written to proxies/hijacked.json. */
+export interface HijackedProxyResponse {
+  ip: string;
+  port: number;
+  hijack_type: HijackType;
+  hijack_body: string | null;
+  country: string | null;
+  asn: string | null;
+  detected_at: number;   // unix epoch seconds
 }
