@@ -140,7 +140,15 @@ Manually trigger a full pipeline run. Requires `X-Admin-Token` header.
 ## Pool Statistics
 
 <!-- STATS_START -->
-_No data yet — run the pipeline to populate._
+| Metric | Value |
+| --- | --- |
+| Total proxies | 8582 |
+| Alive proxies | 1061 |
+| Elite proxies | 1061 |
+| Google pass | 334 |
+| Hijacked | 837 |
+| Avg latency | 8404 ms |
+| Last updated | 2026-04-03T13:06:25.000Z |
 <!-- STATS_END -->
 
 ---
