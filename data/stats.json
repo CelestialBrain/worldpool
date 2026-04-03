@@ -1,23 +1,62 @@
 {
-  "proxy_count": 8582,
-  "alive_count": 1061,
-  "elite_count": 1061,
-  "google_pass_count": 334,
-  "hijacked_count": 837,
-  "avg_latency_ms": 8404,
+  "proxy_count": 5969,
+  "alive_count": 581,
+  "elite_count": 581,
+  "google_pass_count": 100,
+  "hijacked_count": 937,
+  "avg_latency_ms": 5638,
+  "avg_reliability_pct": 9.7,
   "by_protocol": [
     {
       "protocol": "http",
-      "proxy_count": 302
+      "proxy_count": 413
     },
     {
       "protocol": "socks4",
-      "proxy_count": 164
+      "proxy_count": 142
     },
     {
       "protocol": "socks5",
-      "proxy_count": 595
+      "proxy_count": 26
     }
   ],
-  "last_updated": 1775221585
+  "last_updated": 1775245138,
+  "source_quality": [
+    {
+      "source": "proxyscrape",
+      "total": 745,
+      "alive": 143,
+      "elite": 143,
+      "google_pass": 19,
+      "avg_latency_ms": 3461.188811188811,
+      "alive_pct": 19.2
+    },
+    {
+      "source": "thespeedx",
+      "total": 3112,
+      "alive": 296,
+      "elite": 296,
+      "google_pass": 40,
+      "avg_latency_ms": 6778.4628378378375,
+      "alive_pct": 9.5
+    },
+    {
+      "source": "proxifly",
+      "total": 1632,
+      "alive": 132,
+      "elite": 132,
+      "google_pass": 39,
+      "avg_latency_ms": 5613.121212121212,
+      "alive_pct": 8.1
+    },
+    {
+      "source": "geonode",
+      "total": 480,
+      "alive": 10,
+      "elite": 10,
+      "google_pass": 2,
+      "avg_latency_ms": 3350.2,
+      "alive_pct": 2.1
+    }
+  ]
 }
