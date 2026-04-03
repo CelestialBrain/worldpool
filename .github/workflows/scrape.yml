@@ -1,0 +1,65 @@
+name: Scrape & Validate Proxy Pool
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'   # every 6 hours
+  workflow_dispatch:          # manual trigger from GitHub UI
+
+permissions:
+  contents: write             # needed to commit proxy files back to repo
+
+jobs:
+  update-pool:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run pipeline
+        run: npm run pipeline
+        env:
+          NODE_ENV: production
+          JUDGE_URL: ${{ secrets.JUDGE_URL }}
+          JUDGE_TOKEN: ${{ secrets.JUDGE_TOKEN }}
+          VALIDATOR_CONCURRENCY: '100'
+          VALIDATOR_TIMEOUT_MS: '8000'
+
+      - name: Commit updated proxy files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add proxies/ data/ README.md
+
+          # Only commit if there are changes
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            # Generate commit message with stats
+            HTTP_COUNT=$(wc -l < proxies/http.txt 2>/dev/null || echo 0)
+            SOCKS4_COUNT=$(wc -l < proxies/socks4.txt 2>/dev/null || echo 0)
+            SOCKS5_COUNT=$(wc -l < proxies/socks5.txt 2>/dev/null || echo 0)
+            ELITE_COUNT=$(wc -l < proxies/elite.txt 2>/dev/null || echo 0)
+            GPASS_COUNT=$(wc -l < proxies/google-pass.txt 2>/dev/null || echo 0)
+
+            git commit -m "chore: update proxy pool [$(date -u +%Y-%m-%d)]
+
+          http:         ${HTTP_COUNT} proxies
+          socks4:       ${SOCKS4_COUNT} proxies
+          socks5:       ${SOCKS5_COUNT} proxies
+          elite:        ${ELITE_COUNT} proxies
+          google-pass:  ${GPASS_COUNT} proxies"
+
+            git push
+          fi

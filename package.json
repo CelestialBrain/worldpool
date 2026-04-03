@@ -1,0 +1,43 @@
+{
+  "name": "worldpool",
+  "version": "0.1.0",
+  "description": "Global proxy pool. Self-maintaining, free, open.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "pipeline": "tsx src/pipeline.ts",
+    "build": "tsc",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "axios": "^1.7.0",
+    "better-sqlite3": "^11.0.0",
+    "hono": "^4.0.0",
+    "p-limit": "^6.0.0",
+    "proxy-agent": "^6.4.0",
+    "socks-proxy-agent": "^8.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.5.0"
+  },
+  "keywords": [
+    "proxy",
+    "proxy-list",
+    "proxy-checker",
+    "proxy-scraper",
+    "proxy-pool",
+    "socks5",
+    "socks4",
+    "free-proxy"
+  ],
+  "author": "CelestialBrain",
+  "license": "MIT",
+  "private": true
+}
