@@ -75,6 +75,7 @@ export async function updateReadmeStats(): Promise<void> {
 | Alive proxies | ${stats.alive_count} |
 | Elite proxies | ${stats.elite_count} |
 | Google pass | ${stats.google_pass_count} |
+| Hijacked | ${stats.hijacked_count} |
 | Avg latency | ${stats.avg_latency_ms} ms |
 | Last updated | ${updated} |
 `;

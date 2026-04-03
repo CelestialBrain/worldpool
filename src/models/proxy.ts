@@ -25,6 +25,7 @@ function rowToResponse(row: ProxyRow): ProxyResponse {
     anonymity: row.anonymity,
     latency_ms: row.latency_ms,
     google_pass: row.google_pass === 1,
+    hijacked: row.hijacked === 1,
     country: row.country,
     last_checked: row.last_checked,
   };
@@ -36,16 +37,17 @@ export function upsertProxy(proxies: ValidatedProxy[]): void {
 
   const stmt = db.prepare(`
     INSERT INTO proxy
-      (proxy_id, host, port, protocol, anonymity, latency_ms, google_pass, alive,
+      (proxy_id, host, port, protocol, anonymity, latency_ms, google_pass, alive, hijacked,
        country, source, last_checked, created_at)
     VALUES
-      (@proxy_id, @host, @port, @protocol, @anonymity, @latency_ms, @google_pass, @alive,
+      (@proxy_id, @host, @port, @protocol, @anonymity, @latency_ms, @google_pass, @alive, @hijacked,
        @country, @source, @last_checked, @created_at)
     ON CONFLICT(proxy_id) DO UPDATE SET
       anonymity    = excluded.anonymity,
       latency_ms   = excluded.latency_ms,
       google_pass  = excluded.google_pass,
       alive        = excluded.alive,
+      hijacked     = excluded.hijacked,
       country      = excluded.country,
       source       = excluded.source,
       last_checked = excluded.last_checked
@@ -62,6 +64,7 @@ export function upsertProxy(proxies: ValidatedProxy[]): void {
         latency_ms: p.latency_ms,
         google_pass: p.google_pass ? 1 : 0,
         alive: p.alive ? 1 : 0,
+        hijacked: p.hijacked ? 1 : 0,
         country: p.country ?? null,
         source: p.source ?? null,
         last_checked: p.last_checked,
@@ -76,8 +79,14 @@ export function upsertProxy(proxies: ValidatedProxy[]): void {
 
 export function queryProxy(opts: ProxyQueryOption): ProxyResponse[] {
   const db = getDb();
-  const conditions: string[] = ['alive = 1'];
+  const conditions: string[] = [];
   const params: Record<string, unknown> = {};
+
+  // Default: only return alive, non-hijacked proxies unless caller opts out
+  const aliveOnly = opts.alive_only !== false;
+  if (aliveOnly) {
+    conditions.push('alive = 1', 'hijacked = 0');
+  }
 
   if (opts.protocol) {
     conditions.push('protocol = @protocol');
@@ -90,10 +99,6 @@ export function queryProxy(opts: ProxyQueryOption): ProxyResponse[] {
   if (opts.google_pass !== undefined) {
     conditions.push('google_pass = @google_pass');
     params.google_pass = opts.google_pass ? 1 : 0;
-  }
-  if (opts.alive_only === false) {
-    // remove alive constraint when explicitly asked for all
-    conditions.shift();
   }
   if (opts.max_latency_ms !== undefined) {
     conditions.push('latency_ms <= @max_latency_ms');
@@ -120,7 +125,7 @@ export function queryProxy(opts: ProxyQueryOption): ProxyResponse[] {
 
 export function getRandomProxy(opts: ProxyQueryOption = {}): ProxyResponse | null {
   const db = getDb();
-  const conditions: string[] = ['alive = 1'];
+  const conditions: string[] = ['alive = 1', 'hijacked = 0'];
   const params: Record<string, unknown> = {};
 
   if (opts.protocol) {
@@ -167,6 +172,7 @@ export function getStats(): PoolStatsResponse {
         SUM(CASE WHEN alive = 1 THEN 1 ELSE 0 END) as alive_count,
         SUM(CASE WHEN anonymity = 'elite' AND alive = 1 THEN 1 ELSE 0 END) as elite_count,
         SUM(CASE WHEN google_pass = 1 AND alive = 1 THEN 1 ELSE 0 END) as google_pass_count,
+        SUM(CASE WHEN hijacked = 1 THEN 1 ELSE 0 END) as hijacked_count,
         AVG(CASE WHEN alive = 1 AND latency_ms >= 0 THEN latency_ms ELSE NULL END) as avg_latency_ms,
         MAX(last_checked) as last_updated
       FROM proxy`,
@@ -176,6 +182,7 @@ export function getStats(): PoolStatsResponse {
     alive_count: number;
     elite_count: number;
     google_pass_count: number;
+    hijacked_count: number;
     avg_latency_ms: number | null;
     last_updated: number | null;
   };
@@ -194,6 +201,7 @@ export function getStats(): PoolStatsResponse {
     alive_count: totals.alive_count ?? 0,
     elite_count: totals.elite_count ?? 0,
     google_pass_count: totals.google_pass_count ?? 0,
+    hijacked_count: totals.hijacked_count ?? 0,
     avg_latency_ms: Math.round(totals.avg_latency_ms ?? 0),
     by_protocol: byProtocol as ProtocolBreakdown[],
     last_updated: totals.last_updated ?? null,

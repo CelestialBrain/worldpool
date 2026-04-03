@@ -26,6 +26,7 @@ export interface ProxyRow {
   latency_ms: number;
   google_pass: number;    // 0 | 1 (SQLite boolean)
   alive: number;          // 0 | 1
+  hijacked: number;       // 0 | 1
   country: string | null;
   source: string | null;
   last_checked: number;   // unix epoch seconds
@@ -44,6 +45,7 @@ export interface ValidatedProxy {
   latency_ms: number;
   google_pass: boolean;
   alive: boolean;
+  hijacked: boolean;
   country?: string;
   source?: string;
   last_checked: number;
@@ -60,6 +62,7 @@ export interface ProxyResponse {
   anonymity: AnonymityLevel;
   latency_ms: number;
   google_pass: boolean;
+  hijacked: boolean;
   country: string | null;
   last_checked: number;
 }
@@ -70,6 +73,7 @@ export interface PoolStatsResponse {
   alive_count: number;
   elite_count: number;
   google_pass_count: number;
+  hijacked_count: number;
   avg_latency_ms: number;
   by_protocol: ProtocolBreakdown[];
   last_updated: number | null;

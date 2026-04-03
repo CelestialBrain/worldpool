@@ -34,4 +34,9 @@ export const config = {
     proxiesDir: 'proxies',
     dataDir: 'data',
   },
+
+  // ─── Geo ──────────────────────────────────────────────────────────────
+  geo: {
+    mmdbPath: process.env.MMDB_PATH ?? 'data/GeoLite2-Country.mmdb',
+  },
 } as const;
