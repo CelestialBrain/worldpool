@@ -258,4 +258,4 @@ Without the database, the pipeline runs normally — proxies will use country da
 
 ## License
 
-MIT
+AGPL-3.0 — see [LICENSE](LICENSE) for details.
