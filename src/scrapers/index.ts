@@ -14,37 +14,59 @@ import { scrape as clarketm } from './clarketm.js';
 import { scrape as hookzof } from './hookzof.js';
 import { scrape as fate0 } from './fate0.js';
 import { scrape as sunny9577 } from './sunny9577.js';
+import { scrape as ercin } from './ercin.js';
+import { scrape as murongpig } from './murongpig.js';
+import { scrape as r00tee } from './r00tee.js';
+import { scrape as casa } from './casa.js';
+import { scrape as jetkai } from './jetkai.js';
+import { scrape as mmpx12 } from './mmpx12.js';
+import { scrape as vakhov } from './vakhov.js';
+import { scrape as iplocate } from './iplocate.js';
+import { scrape as zloi } from './zloi.js';
+import { scrape as spysme } from './spysme.js';
+import { scrape as databay } from './databay.js';
 import type { RawProxy } from '../types.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('scrapers');
 
-export async function scrapeAll(): Promise<RawProxy[]> {
-  const results = await Promise.allSettled([
-    proxyscrape(),
-    geonode(),
-    thespeedx(),
-    proxifly(),
-    shodan(),
-    censys(),
-    scanner(),
-    monosans(),
-    clarketm(),
-    hookzof(),
-    fate0(),
-    sunny9577(),
-  ]);
+const scrapers = [
+  { name: 'proxyscrape', fn: proxyscrape },
+  { name: 'geonode', fn: geonode },
+  { name: 'thespeedx', fn: thespeedx },
+  { name: 'proxifly', fn: proxifly },
+  { name: 'shodan', fn: shodan },
+  { name: 'censys', fn: censys },
+  { name: 'scanner', fn: scanner },
+  { name: 'monosans', fn: monosans },
+  { name: 'clarketm', fn: clarketm },
+  { name: 'hookzof', fn: hookzof },
+  { name: 'fate0', fn: fate0 },
+  { name: 'sunny9577', fn: sunny9577 },
+  { name: 'ercin', fn: ercin },
+  { name: 'murongpig', fn: murongpig },
+  { name: 'r00tee', fn: r00tee },
+  { name: 'casa', fn: casa },
+  { name: 'jetkai', fn: jetkai },
+  { name: 'mmpx12', fn: mmpx12 },
+  { name: 'vakhov', fn: vakhov },
+  { name: 'iplocate', fn: iplocate },
+  { name: 'zloi', fn: zloi },
+  { name: 'spysme', fn: spysme },
+  { name: 'databay', fn: databay },
+];
 
-  const sourceNames = ['proxyscrape', 'geonode', 'thespeedx', 'proxifly', 'shodan', 'censys', 'scanner', 'monosans', 'clarketm', 'hookzof', 'fate0', 'sunny9577'];
+export async function scrapeAll(): Promise<RawProxy[]> {
+  const results = await Promise.allSettled(scrapers.map(s => s.fn()));
   const allProxies: RawProxy[] = [];
 
   for (let i = 0; i < results.length; i++) {
     const result = results[i];
     if (result.status === 'fulfilled') {
-      log.info(`Source ${sourceNames[i]}: ${result.value.length} proxies`);
+      log.info(`Source ${scrapers[i].name}: ${result.value.length} proxies`);
       allProxies.push(...result.value);
     } else {
-      log.error(`Source ${sourceNames[i]} failed`, { reason: String(result.reason) });
+      log.error(`Source ${scrapers[i].name} failed`, { reason: String(result.reason) });
     }
   }
 
