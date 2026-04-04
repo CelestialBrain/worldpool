@@ -77,14 +77,23 @@ const scrapers = [
 ];
 
 export async function scrapeAll(): Promise<RawProxy[]> {
+  const MAX_PER_SOURCE = 50_000; // safety cap — no single source should return more than this
+
   const results = await Promise.allSettled(scrapers.map(s => s.fn()));
   const allProxies: RawProxy[] = [];
 
   for (let i = 0; i < results.length; i++) {
     const result = results[i];
     if (result.status === 'fulfilled') {
-      log.info(`Source ${scrapers[i].name}: ${result.value.length} proxies`);
-      allProxies.push(...result.value);
+      let proxies = result.value;
+      if (proxies.length > MAX_PER_SOURCE) {
+        log.warn(`Source ${scrapers[i].name} returned ${proxies.length} proxies — capping at ${MAX_PER_SOURCE}`);
+        proxies = proxies.slice(0, MAX_PER_SOURCE);
+      }
+      log.info(`Source ${scrapers[i].name}: ${proxies.length} proxies`);
+      for (const proxy of proxies) {
+        allProxies.push(proxy);
+      }
     } else {
       log.error(`Source ${scrapers[i].name} failed`, { reason: String(result.reason) });
     }

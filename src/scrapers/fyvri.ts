@@ -6,7 +6,8 @@ import type { RawProxy, ProxyProtocol } from '../types.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('scraper:fyvri');
-const BASE = 'https://raw.githubusercontent.com/fyvri/fresh-proxy-list/archive/storage/classic';
+// Use main branch (current), not archive (historical dumps of 500k+)
+const BASE = 'https://raw.githubusercontent.com/fyvri/fresh-proxy-list/main/storage/classic';
 const SOURCES: Array<{ url: string; protocol: ProxyProtocol }> = [
   { url: `${BASE}/http.txt`, protocol: 'http' },
   { url: `${BASE}/socks4.txt`, protocol: 'socks4' },

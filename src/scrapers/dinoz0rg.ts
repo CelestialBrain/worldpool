@@ -7,10 +7,8 @@ import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('scraper:dinoz0rg');
 const BASE = 'https://raw.githubusercontent.com/dinoz0rg/proxy-list/main';
+// Only use checked (verified) proxies, not scraped (300k+ unverified dumps)
 const SOURCES: Array<{ url: string; protocol: ProxyProtocol }> = [
-  { url: `${BASE}/scraped_proxies/http.txt`, protocol: 'http' },
-  { url: `${BASE}/scraped_proxies/socks4.txt`, protocol: 'socks4' },
-  { url: `${BASE}/scraped_proxies/socks5.txt`, protocol: 'socks5' },
   { url: `${BASE}/checked_proxies/http.txt`, protocol: 'http' },
   { url: `${BASE}/checked_proxies/socks4.txt`, protocol: 'socks4' },
   { url: `${BASE}/checked_proxies/socks5.txt`, protocol: 'socks5' },
