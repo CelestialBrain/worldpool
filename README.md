@@ -1,12 +1,12 @@
 # 🌐 Worldpool
 
 <!-- BADGES_START -->
-![Alive](https://img.shields.io/badge/alive-581-brightgreen)
-![Google Pass](https://img.shields.io/badge/google--pass-100-blue)
-![Hijacked Blocked](https://img.shields.io/badge/hijacked--blocked-937-red)
-![Avg Latency](https://img.shields.io/badge/avg--latency-5638ms-yellow)
-![Reliability](https://img.shields.io/badge/reliability-9.7%25-purple)
-![Updated](https://img.shields.io/badge/updated-2026--04--03-lightgrey)
+![Alive](https://img.shields.io/badge/alive-687-brightgreen)
+![Google Pass](https://img.shields.io/badge/google--pass-140-blue)
+![Hijacked Blocked](https://img.shields.io/badge/hijacked--blocked-1032-red)
+![Avg Latency](https://img.shields.io/badge/avg--latency-5718ms-yellow)
+![Reliability](https://img.shields.io/badge/reliability-10.5%25-purple)
+![Updated](https://img.shields.io/badge/updated-2026--04--04-lightgrey)
 <!-- BADGES_END -->
 
 **Global proxy pool. Self-maintaining, free, open.**
@@ -202,13 +202,13 @@ or
 <!-- STATS_START -->
 | Metric | Value |
 | --- | --- |
-| Total proxies | 5969 |
-| Alive proxies | 581 |
-| Elite proxies | 581 |
-| Google pass | 100 |
-| Hijacked | 937 |
-| Avg latency | 5638 ms |
-| Last updated | 2026-04-03T19:38:58.000Z |
+| Total proxies | 6554 |
+| Alive proxies | 687 |
+| Elite proxies | 687 |
+| Google pass | 140 |
+| Hijacked | 1032 |
+| Avg latency | 5718 ms |
+| Last updated | 2026-04-04T01:20:10.000Z |
 <!-- STATS_END -->
 
 ---
