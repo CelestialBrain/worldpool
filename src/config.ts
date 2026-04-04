@@ -55,6 +55,21 @@ export const config = {
     maxPages: parseInt(process.env.CENSYS_MAX_PAGES ?? '3', 10),
   },
 
+  // ─── Tendril ───────────────────────────────────────────────────────────
+  // Distributed scraping subsystem. Disabled by default.
+  tendril: {
+    enabled: process.env.TENDRIL_ENABLED === 'true',
+    swarmTopic: process.env.TENDRIL_TOPIC ?? 'worldpool',
+    port: parseInt(process.env.TENDRIL_PORT ?? '3001', 10),
+    maxConcurrentJob: parseInt(process.env.TENDRIL_MAX_CONCURRENT ?? '5', 10),
+    requestPerSecond: parseInt(process.env.TENDRIL_RPS ?? '10', 10),
+    defaultTimeoutMs: parseInt(process.env.TENDRIL_TIMEOUT_MS ?? '30000', 10),
+    batchSize: parseInt(process.env.TENDRIL_BATCH_SIZE ?? '500', 10),
+    collectTimeoutMs: parseInt(process.env.TENDRIL_COLLECT_TIMEOUT_MS ?? '300000', 10),
+    /** Seconds to wait for peers before falling back to local validation. */
+    peerDiscoveryWaitSec: parseInt(process.env.TENDRIL_PEER_WAIT_SEC ?? '15', 10),
+  },
+
   // ─── Scanner ──────────────────────────────────────────────────────────
   // Disabled by default — flip SCANNER_ENABLED=true to enable active probing.
   scanner: {

@@ -135,3 +135,62 @@ src/
 - Each migration is idempotent where possible (`IF NOT EXISTS`, `ON CONFLICT DO NOTHING`)
 - Include a comment header with what the migration does
 - SQLite migrations applied via a simple runner in `src/utils/db.ts`
+
+## Tendril Subsystem Tables
+
+The distributed scraping subsystem adds 7 new tables (migrations 005–008):
+
+| Table                 | PK                        | Purpose                                     |
+| --------------------- | ------------------------- | ------------------------------------------- |
+| `job`                 | `job_id TEXT`              | Distributed scraping/validation jobs         |
+| `scrap_transaction`   | `transaction_id TEXT`      | SHA256-chained reward ledger                 |
+| `job_allocation`      | `job_id TEXT` (FK)         | Scraps reserved when a job is created        |
+| `tendril_node`        | `node_id TEXT`             | Known peers in the swarm                     |
+| `node_execution`      | `(node_id, job_id)` PK    | Per-node per-job execution counts            |
+| `job_preference`      | `job_id TEXT` (FK)         | Local-only starred/priority metadata         |
+| `regional_validation` | `id INTEGER AUTOINCREMENT` | Multi-region proxy validation results        |
+
+> **Note:** `scrap_transaction` uses a non-standard name because `transaction` is a SQLite reserved word. `tendril_node` uses the prefix to avoid collision with the `node` runtime name.
+
+### Tendril Naming
+
+| Convention                | Rule                                                            |
+| ------------------------- | --------------------------------------------------------------- |
+| **Config prefix**         | `TENDRIL_` env vars for all Tendril settings                    |
+| **Logger prefix**         | `tendril:{module}` (e.g., `tendril:swarm`, `tendril:executor`)  |
+| **Runtime types**         | camelCase matching the table (e.g., `Job`, `TendrilNodeInfo`)   |
+| **DB row types**          | `{Table}Row` with snake_case (e.g., `JobRow`)                   |
+| **DAL modules**           | `src/models/{table}.ts` (e.g., `job.ts`, `regional.ts`)         |
+
+### Tendril File Organization
+
+```
+src/tendril/
+  types.ts           ← All types, enums, message types, constants
+  config.ts          ← TENDRIL_* env var config
+  declarations.d.ts  ← Type declarations for hyperswarm/b4a/msgpack
+  core/
+    node.ts          ← TendrilNode — main orchestrator
+  p2p/
+    swarm.ts         ← Hyperswarm DHT wrapper
+    protocol.ts      ← MsgPack encode/decode + typed payloads
+    handler.ts       ← Message router (20+ message types)
+    peer.ts          ← Peer tracker
+  conflict/
+    vector-clock.ts  ← Compare, merge, increment operations
+    resolver.ts      ← LWW with deterministic tiebreakers
+    counter-crdt.ts  ← PN-Counter for completion counting
+  job/
+    model.ts         ← Zod v4 schemas + factory functions
+    state.ts         ← State machine (6 states)
+  execution/
+    executor.ts      ← Proxy-aware HTTP execution
+    rate-limiter.ts  ← Token bucket
+    retry.ts         ← Exponential backoff
+  sdk/
+    tendril.ts       ← User-facing SDK: get/post/batch/getProxy
+    proxy-pool.ts    ← Fetches Worldpool proxy lists from GitHub
+  test/
+    e2e.ts           ← Two-node integration test
+```
+

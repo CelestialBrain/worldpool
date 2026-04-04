@@ -18,40 +18,64 @@ Worldpool is an automated proxy aggregation, validation, and serving pipeline. I
 ## How It Works
 
 ```
-[ Scrapers ]                    [ Shodan API (optional) ]
-  ProxyScrape API                 port:1080, 8080, 3128
-  Geonode API                   [ Censys API (optional) ]
-  TheSpeedX GitHub                open proxy services
-  Proxifly JSON                 [ Scanner (optional) ]
-  Shodan API                      port-scans scan-targets.txt
-  Censys API
-  Scanner (active)
-         ↓
-[ Deduplicator ]
-  normalize host:port
-  discard duplicates
-         ↓
-[ Validator — p-limit ]
-  → Self-hosted judge (echo headers → anonymity level)
-  → Google generate_204 check
-  → TCP latency measurement
-  → Hijack detection (ad_injection, redirect, etc.)
-         ↓
-[ SQLite Store ]
-  upsert by proxy_id (host:port)
-  indexed on alive, anonymity, protocol, latency
-         ↓
-[ Exporter ]                    [ Hono REST API ]
-  proxies/http.txt                GET /
-  proxies/socks4.txt              GET /proxies
-  proxies/socks5.txt              GET /proxies/random
-  proxies/elite.txt               GET /stats
-  proxies/google-pass.txt         POST /refresh
-  proxies/hijacked.txt            POST /optout
-  proxies/hijacked.json
-  proxies/malicious-asn.txt
-  data/proxies.json
-  data/stats.json
+                        ┌──────────────────────────┐
+                        │       7 SCRAPERS          │
+                        │                          │
+                        │  ProxyScrape · Geonode   │
+                        │  TheSpeedX  · Proxifly   │
+                        │  Shodan  · Censys · Scan │
+                        └────────────┬─────────────┘
+                                     │
+                                     ▼
+                        ┌──────────────────────────┐
+                        │      DEDUPLICATE         │
+                        │   normalize host:port    │
+                        └────────────┬─────────────┘
+                                     │
+                                     ▼
+                        ┌──────────────────────────┐
+                        │       VALIDATE           │
+                        │                          │
+                        │  ✓ Alive (judge server)  │
+                        │  ✓ Anonymity level       │
+                        │  ✓ Google 204 pass       │
+                        │  ✓ Latency (ms)          │
+                        │  ✓ Hijack detection      │
+                        └────────────┬─────────────┘
+                                     │
+                            TENDRIL_ENABLED?
+                           ╱                ╲
+                         yes                 no
+                          │                   │
+                          ▼                   │
+               ┌─────────────────────┐        │
+               │  TENDRIL DISTRIBUTE │        │
+               │                     │        │
+               │  P2P swarm validates│        │
+               │  from multiple      │        │
+               │  regions worldwide  │        │
+               └──────────┬──────────┘        │
+                          │                   │
+                          └─────────┬─────────┘
+                                    │
+                                    ▼
+                        ┌──────────────────────────┐
+                        │     SQLITE STORE         │
+                        │  upsert by host:port     │
+                        └────────────┬─────────────┘
+                                     │
+                          ┌──────────┴──────────┐
+                          ▼                     ▼
+               ┌────────────────────┐  ┌──────────────────┐
+               │   FILE EXPORT      │  │   REST API       │
+               │                    │  │                  │
+               │  proxies/http.txt  │  │  GET /proxies    │
+               │  proxies/socks4.txt│  │  GET /random     │
+               │  proxies/socks5.txt│  │  GET /stats      │
+               │  proxies/elite.txt │  │  POST /refresh   │
+               │  data/proxies.json │  │  POST /optout    │
+               │  data/stats.json   │  │                  │
+               └────────────────────┘  └──────────────────┘
 ```
 
 ---
@@ -250,14 +274,66 @@ Without the database, the pipeline runs normally — proxies will use country da
 | Database | SQLite (better-sqlite3) |
 | Proxy Agents | proxy-agent (auto-detect protocol) |
 | Concurrency | p-limit |
+| P2P Networking | Hyperswarm (DHT + NAT traversal) |
+| Distributed State | CRDTs (PN-Counters, Vector Clocks) |
+| Message Encoding | MsgPack |
+| Validation | Zod v4 |
 | Geolocation | MaxMind GeoLite2-Country + GeoLite2-ASN (offline, zero-latency) |
-| Proxy Discovery | Shodan API (optional, `SHODAN_API_KEY`) |
-| Proxy Discovery | Censys API (optional, `CENSYS_API_ID` + `CENSYS_API_SECRET`) |
-| Proxy Discovery | Active Scanner (optional, `SCANNER_ENABLED=true`) |
+| Proxy Discovery | Shodan API, Censys API, Active Scanner |
 | Scheduling | GitHub Actions cron / node-cron |
 | CI/CD | GitHub Actions |
 
 ---
+
+## Tendril: Distributed Scraping SDK
+
+Worldpool includes an optional P2P distributed scraping layer. When enabled, nodes around the world validate proxies from their own region — giving you geo-scoped availability data nobody else publishes.
+
+### SDK Usage
+
+```typescript
+import { Tendril } from 'worldpool-tendril';
+
+const t = new Tendril({ topic: 'worldpool' });
+await t.connect();
+
+// Scrape through the distributed network
+const page = await t.get('https://example.com');
+console.log(page.status, page.body, page.nodeId);
+
+// Get a random proxy from Worldpool's pool
+const proxy = await t.getProxy({ protocol: 'socks5' });
+
+// Batch requests across the swarm
+const results = await t.batch([
+  { url: 'https://httpbin.org/ip' },
+  { url: 'https://httpbin.org/headers' },
+]);
+
+await t.disconnect();
+```
+
+### Private Topics (Authenticated Scraping)
+
+```typescript
+const t = new Tendril({ topic: 'my-secret-topic' });
+await t.connect();
+// Auth headers ALLOWED on private topics
+const data = await t.get('https://api.example.com/data', {
+  headers: { 'Authorization': 'Bearer sk-xxx' },
+});
+```
+
+> Auth headers on the public `worldpool` topic are blocked to prevent credential leakage.
+
+### Running a Node
+
+```bash
+TENDRIL_ENABLED=true TENDRIL_REGION=PH npm run pipeline
+```
+
+
+
 
 ## Security
 

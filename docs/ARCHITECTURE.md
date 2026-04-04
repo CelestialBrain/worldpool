@@ -202,6 +202,73 @@ Content-Type: application/json
 
 Exclusions are appended to `data/scan-exclude.txt`. The scanner reads this file at startup on every run and skips any IPs matching an excluded entry. The file is committed back to the repo by the Actions workflow, so exclusions persist across runs.
 
+## Tendril: Distributed Scraping Subsystem
+
+Worldpool includes an optional P2P distributed scraping layer called **Tendril** (ported from [TendrilHive](https://github.com/CelestialBrain/tendrilhive)). When enabled (`TENDRIL_ENABLED=true`), it adds a Step 3 to the pipeline: distributing proxy validation jobs across a swarm of volunteer nodes.
+
+### Architecture Layers
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  SDK Layer (worldpool-tendril)                                  │
+│  t.get() / t.post() / t.batch() / t.getProxy()                │
+├─────────────────────────────────────────────────────────────────┤
+│  Node Layer (TendrilNode)                                       │
+│  Orchestrates: swarm, handler, executor, conflict resolution    │
+├─────────────────────────────────────────────────────────────────┤
+│  P2P Layer (Hyperswarm)                                         │
+│  DHT discovery ← NAT traversal ← MsgPack messages              │
+├─────────────────────────────────────────────────────────────────┤
+│  Data Layer (SQLite)                                            │
+│  job, tendril_node, regional_validation, scrap_transaction      │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### How It Works
+
+1. **Pipeline posts validation jobs** — after local validation, the pipeline creates one job per alive proxy targeted at `httpbin.org/ip`, routed through that proxy.
+2. **Jobs propagate via Hyperswarm** — DHT-based peer discovery broadcasts jobs to all connected nodes using MsgPack-encoded messages.
+3. **Nodes execute locally** — each peer executes the job from their own IP/region, recording alive/latency/google_pass.
+4. **Results flow back** — execution results are stored in the `regional_validation` table, giving per-region availability data.
+
+### Conflict Resolution
+
+The system uses two CRDT primitives to maintain consistency without a central coordinator:
+
+- **Vector Clocks** — track causality for job updates. Concurrent edits are resolved deterministically: higher multiplier → more recent timestamp → lower lexicographic ID.
+- **PN-Counters** — track job completion counts. Each node increments its own positive counter; the global count is the sum of all nodes' (P - N) values.
+
+### Security: Public vs. Private Topics
+
+| Topic Type | Who Can Join | Auth Headers Allowed | Use Case |
+|------------|-------------|---------------------|----------|
+| **Public** (`worldpool`) | Anyone | ❌ Blocked by SDK guard | Anonymous proxy validation |
+| **Private** (user-defined) | Only nodes you control | ✅ Allowed | Authenticated scraping |
+
+The SDK throws an explicit error if you attempt to send `Authorization`, `Cookie`, `X-API-Key`, or similar headers on the public topic. This prevents credential leakage to unknown nodes.
+
+### Regional Validation Table
+
+The killer feature — data nobody else publishes:
+
+```sql
+-- A single proxy validated from 3 regions simultaneously
+proxy_id │ region │ alive │ latency_ms │ google_pass
+─────────┼────────┼───────┼────────────┼────────────
+1.2.3.4  │ PH     │ 1     │ 45         │ 1
+1.2.3.4  │ DE     │ 0     │ -1         │ 0
+1.2.3.4  │ US     │ 1     │ 220        │ 1
+```
+
+### Flywheel
+
+```
+More nodes → faster validation → more regional data
+     ↑                                      │
+     └── better proxy pool ← more users ←───┘
+```
+
 ## Threat Model
 
 See [SECURITY.md](SECURITY.md) for the full threat analysis and mitigations.
+
