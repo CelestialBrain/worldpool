@@ -3,6 +3,7 @@
 export type ProxyProtocol = 'http' | 'socks4' | 'socks5';
 export type AnonymityLevel = 'elite' | 'anonymous' | 'transparent' | 'unknown';
 export type SpeedTier = 'turbo' | 'fast' | 'medium' | 'slow';
+export type SitePassKey = 'google' | 'discord' | 'tiktok' | 'instagram' | 'x' | 'reddit';
 export type HijackType =
   | 'ad_injection'
   | 'redirect'
@@ -65,6 +66,8 @@ export interface ValidatedProxy {
   country?: string;
   source?: string;
   last_checked: number;
+  /** Site-specific pass checks — which popular sites this proxy can reach. */
+  site_pass?: Partial<Record<SitePassKey, boolean>>;
 }
 
 // ─── API Response ─────────────────────────────────────────────────────────────

@@ -8,7 +8,7 @@ import { HttpProxyAgent } from 'http-proxy-agent';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import type { Agent } from 'http';
-import type { RawProxy, ValidatedProxy, AnonymityLevel, HijackType } from '../types.js';
+import type { RawProxy, ValidatedProxy, AnonymityLevel, HijackType, SitePassKey } from '../types.js';
 import { config } from '../config.js';
 import { createLogger } from '../utils/logger.js';
 import { initGeo, initGeoAsn, lookupCountry, lookupAsn, prewarmFreeGeoCache } from './geolocator.js';
@@ -184,6 +184,45 @@ async function checkHijacked(
   }
 }
 
+// ─── Site-Pass Checks ──────────────────────────────────────────────────────────
+// Tests whether a proxy can reach popular sites. Each site has a lightweight
+// endpoint that returns a predictable status code — no heavy page loads.
+
+const SITE_CHECKS: Array<{ key: SitePassKey; url: string; pass: (status: number) => boolean }> = [
+  { key: 'discord', url: 'https://discord.com/api/v10/gateway', pass: (s) => s === 200 },
+  { key: 'tiktok', url: 'https://www.tiktok.com/robots.txt', pass: (s) => s >= 200 && s < 400 },
+  { key: 'instagram', url: 'https://www.instagram.com/robots.txt', pass: (s) => s >= 200 && s < 400 },
+  { key: 'x', url: 'https://x.com/robots.txt', pass: (s) => s >= 200 && s < 400 },
+  { key: 'reddit', url: 'https://www.reddit.com/robots.txt', pass: (s) => s >= 200 && s < 400 },
+];
+
+async function checkSitePass(
+  httpAgent: Agent,
+  httpsAgent: Agent,
+  timeoutMs: number,
+): Promise<Partial<Record<SitePassKey, boolean>>> {
+  const results: Partial<Record<SitePassKey, boolean>> = {};
+
+  await Promise.all(
+    SITE_CHECKS.map(async ({ key, url, pass }) => {
+      try {
+        const res = await axios.get(url, {
+          httpAgent,
+          httpsAgent,
+          timeout: timeoutMs,
+          validateStatus: () => true,
+          maxRedirects: 3,
+        });
+        results[key] = pass(res.status);
+      } catch {
+        results[key] = false;
+      }
+    }),
+  );
+
+  return results;
+}
+
 export async function validateProxy(proxy: RawProxy): Promise<ValidatedProxy> {
   const proxyUrl = buildProxyUrl(proxy);
   const proxyId = `${proxy.host}:${proxy.port}`;
@@ -287,6 +326,9 @@ export async function validateProxy(proxy: RawProxy): Promise<ValidatedProxy> {
       }
     }
 
+    // ── Site-pass checks ────────────────────────────────────────────
+    const sitePass = await checkSitePass(httpAgent, httpsAgent, config.validator.timeoutMs);
+
     return {
       ...base,
       alive: true,
@@ -296,6 +338,7 @@ export async function validateProxy(proxy: RawProxy): Promise<ValidatedProxy> {
       hijacked: false,
       asn,
       country,
+      site_pass: { google: googlePass, ...sitePass },
     };
   } catch (err) {
     log.debug(`Validation failed for ${proxyId}`, { error: String(err) });

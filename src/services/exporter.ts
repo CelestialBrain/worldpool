@@ -10,6 +10,7 @@ import {
   queryHijacked,
   queryProxyByLatencyRange,
   getSourceQuality,
+  queryBySitePass,
 } from '../models/proxy.js';
 import type { ProxyResponse, HijackedProxyResponse, PoolStatsResponse } from '../types.js';
 import { config } from '../config.js';
@@ -125,12 +126,14 @@ export async function exportFiles(): Promise<void> {
 
   const byAnonymityDir = join(proxiesDir, 'by-anonymity');
   const bySpeedDir = join(proxiesDir, 'by-speed');
+  const bySiteDir = join(proxiesDir, 'by-site');
 
   await Promise.all([
     ensureDir(proxiesDir),
     ensureDir(dataDir),
     ensureDir(byAnonymityDir),
     ensureDir(bySpeedDir),
+    ensureDir(bySiteDir),
   ]);
 
   // Query alive proxies by protocol
@@ -149,6 +152,10 @@ export async function exportFiles(): Promise<void> {
   const fast = queryProxyByLatencyRange(200, 500);
   const medium = queryProxyByLatencyRange(501, 2000);
   const slow = queryProxyByLatencyRange(2001, 999_999);
+
+  // by-site pass
+  const siteNames = ['google', 'discord', 'tiktok', 'instagram', 'x', 'reddit'] as const;
+  const bySite = Object.fromEntries(siteNames.map(s => [s, queryBySitePass(s)]));
 
   // Query hijacked proxies for threat-intel output
   const hijacked = queryHijacked();
@@ -176,11 +183,14 @@ export async function exportFiles(): Promise<void> {
     writeFile(join(bySpeedDir, 'fast.txt'), toLines(fast)),
     writeFile(join(bySpeedDir, 'medium.txt'), toLines(medium)),
     writeFile(join(bySpeedDir, 'slow.txt'), toLines(slow)),
+    // by-site subdirectory
+    ...siteNames.map(s => writeFile(join(bySiteDir, `${s}.txt`), toLines(bySite[s]))),
     // Data exports
     writeFile(join(dataDir, 'proxies.json'), JSON.stringify(all, null, 2)),
     writeFile(join(dataDir, 'stats.json'), JSON.stringify(fullStats, null, 2)),
   ]);
 
+  const siteCounts = Object.fromEntries(siteNames.map(s => [`site_${s}`, bySite[s].length]));
   log.info('Export complete', {
     all: all.length,
     http: http.length,
@@ -194,6 +204,7 @@ export async function exportFiles(): Promise<void> {
     fast: fast.length,
     medium: medium.length,
     slow: slow.length,
+    ...siteCounts,
   });
 
   await appendChangelog(oldStats, fullStats);

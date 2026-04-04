@@ -43,11 +43,11 @@ export function upsertProxy(proxies: ValidatedProxy[]): void {
     INSERT INTO proxy
       (proxy_id, host, port, protocol, anonymity, latency_ms, google_pass, alive, hijacked,
        hijack_type, hijack_body, asn, country, source, last_checked, created_at,
-       check_count, alive_count, reliability_pct)
+       check_count, alive_count, reliability_pct, site_pass)
     VALUES
       (@proxy_id, @host, @port, @protocol, @anonymity, @latency_ms, @google_pass, @alive, @hijacked,
        @hijack_type, @hijack_body, @asn, @country, @source, @last_checked, @created_at,
-       @check_count, @alive_count, @reliability_pct)
+       @check_count, @alive_count, @reliability_pct, @site_pass)
     ON CONFLICT(proxy_id) DO UPDATE SET
       anonymity       = excluded.anonymity,
       latency_ms      = excluded.latency_ms,
@@ -60,6 +60,7 @@ export function upsertProxy(proxies: ValidatedProxy[]): void {
       country         = excluded.country,
       source          = excluded.source,
       last_checked    = excluded.last_checked,
+      site_pass       = excluded.site_pass,
       check_count     = proxy.check_count + 1,
       alive_count     = proxy.alive_count + excluded.alive,
       reliability_pct = ROUND(
@@ -86,6 +87,7 @@ export function upsertProxy(proxies: ValidatedProxy[]): void {
         country: p.country ?? null,
         source: p.source ?? null,
         last_checked: p.last_checked,
+        site_pass: p.site_pass ? JSON.stringify(p.site_pass) : null,
         created_at: now,
         // Uptime counters: INSERT uses absolute values for the first check;
         // the ON CONFLICT clause uses incremental SQL to update existing rows.
@@ -295,6 +297,24 @@ export function queryProxyByLatencyRange(
  * Return per-source quality metrics, ordered by alive_pct DESC.
  * Used to populate the source_quality field in data/stats.json.
  */
+/**
+ * Return alive, non-hijacked proxies that pass a specific site check.
+ * Reads the site_pass JSON column.
+ */
+export function queryBySitePass(site: string): ProxyResponse[] {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT * FROM proxy
+       WHERE alive = 1 AND hijacked = 0
+         AND site_pass IS NOT NULL
+         AND json_extract(site_pass, '$.' || @site) = 1
+       ORDER BY latency_ms ASC`,
+    )
+    .all({ site }) as ProxyRow[];
+  return rows.map(rowToResponse);
+}
+
 export function getSourceQuality(): SourceQuality[] {
   const db = getDb();
 

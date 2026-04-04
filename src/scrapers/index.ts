@@ -25,6 +25,16 @@ import { scrape as iplocate } from './iplocate.js';
 import { scrape as zloi } from './zloi.js';
 import { scrape as spysme } from './spysme.js';
 import { scrape as databay } from './databay.js';
+import { scrape as prxchk } from './prxchk.js';
+import { scrape as clearproxy } from './clearproxy.js';
+import { scrape as dinoz0rg } from './dinoz0rg.js';
+import { scrape as proxyscraperGh } from './proxyscraper-gh.js';
+import { scrape as zevtyardt } from './zevtyardt.js';
+import { scrape as fyvri } from './fyvri.js';
+import { scrape as vmheaven } from './vmheaven.js';
+import { scrape as vanndev } from './vanndev.js';
+import { scrape as roosterkid } from './roosterkid.js';
+import { scrape as freeproxylist } from './freeproxylist.js';
 import type { RawProxy } from '../types.js';
 import { createLogger } from '../utils/logger.js';
 
@@ -54,6 +64,16 @@ const scrapers = [
   { name: 'zloi', fn: zloi },
   { name: 'spysme', fn: spysme },
   { name: 'databay', fn: databay },
+  { name: 'prxchk', fn: prxchk },
+  { name: 'clearproxy', fn: clearproxy },
+  { name: 'dinoz0rg', fn: dinoz0rg },
+  { name: 'proxyscraper-gh', fn: proxyscraperGh },
+  { name: 'zevtyardt', fn: zevtyardt },
+  { name: 'fyvri', fn: fyvri },
+  { name: 'vmheaven', fn: vmheaven },
+  { name: 'vanndev', fn: vanndev },
+  { name: 'roosterkid', fn: roosterkid },
+  { name: 'freeproxylist', fn: freeproxylist },
 ];
 
 export async function scrapeAll(): Promise<RawProxy[]> {
