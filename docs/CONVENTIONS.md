@@ -115,20 +115,20 @@ src/
     exporter.ts
     geolocator.ts  ← MaxMind GeoLite2-Country + GeoLite2-ASN lookups
     optout.ts      ← POST /optout endpoint + scan-exclude.txt writer
-  scrapers/        ← Per-source fetchers
-    proxyscrape.ts
-    geonode.ts
-    thespeedx.ts
-    proxifly.ts
-    monosans.ts
-    clarketm.ts
-    hookzof.ts
-    fate0.ts
-    sunny9577.ts
-    shodan.ts
-    censys.ts
+  scrapers/        ← Per-source fetchers (34 sources)
+    proxyscrape.ts     geonode.ts        thespeedx.ts
+    proxifly.ts        monosans.ts       clarketm.ts
+    hookzof.ts         fate0.ts          sunny9577.ts
+    ercin.ts           murongpig.ts      r00tee.ts
+    casa.ts            jetkai.ts         mmpx12.ts
+    vakhov.ts          iplocate.ts       zloi.ts
+    spysme.ts          databay.ts        prxchk.ts
+    clearproxy.ts      dinoz0rg.ts       proxyscraper-gh.ts
+    zevtyardt.ts       fyvri.ts          vmheaven.ts
+    vanndev.ts         roosterkid.ts     freeproxylist.ts
+    shodan.ts          censys.ts
     scanner/       ← Active port-scanner (targets.ts, tcp-probe.ts, etc.)
-    index.ts
+    index.ts       ← Declarative registry + dedup
   routes/          ← Hono HTTP handlers (no raw SQL)
   utils/           ← Shared utilities (logger, db connection)
   index.ts         ← Entry point (Hono server)
