@@ -190,10 +190,18 @@ export class MessageHandler extends EventEmitter {
 
   private async handleJobBatchResponse(peerId: string, message: Message): Promise<void> {
     const payload = message.payload as JobBatchResponsePayload;
+    if (!payload?.job || !Array.isArray(payload.job)) {
+      log.warn('Invalid JOB_BATCH_RESPONSE payload', { peer_id: peerId.slice(0, 12) });
+      return;
+    }
     log.info('Received jobs from peer', { peer_id: peerId.slice(0, 12), job_count: payload.job.length });
 
     for (const jobData of payload.job) {
       const job = jobData as Job;
+      if (!job.jobId || !job.targetUrl || !job.createdBy) {
+        log.warn('Skipping malformed job from peer', { peer_id: peerId.slice(0, 12) });
+        continue;
+      }
       const existing = await this.jobStore.get(job.jobId);
 
       if (!existing) {
@@ -209,7 +217,11 @@ export class MessageHandler extends EventEmitter {
 
   private async handleJobAnnounce(peerId: string, message: Message): Promise<void> {
     const payload = message.payload as { job: Job };
-    const job = payload.job;
+    const job = payload?.job;
+    if (!job?.jobId || !job.targetUrl || !job.createdBy) {
+      log.warn('Invalid JOB_ANNOUNCE payload', { peer_id: peerId.slice(0, 12) });
+      return;
+    }
     const existing = await this.jobStore.get(job.jobId);
 
     if (!existing) {
@@ -254,6 +266,10 @@ export class MessageHandler extends EventEmitter {
 
   private async handleResultSubmit(peerId: string, message: Message): Promise<void> {
     const payload = message.payload as ResultSubmitPayload;
+    if (!payload?.result || !payload.jobId) {
+      log.warn('Invalid RESULT_SUBMIT payload', { peer_id: peerId.slice(0, 12) });
+      return;
+    }
     const result = payload.result as ExecutionResult;
 
     log.info('Result submission received', {

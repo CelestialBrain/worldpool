@@ -120,6 +120,11 @@ src/
     geonode.ts
     thespeedx.ts
     proxifly.ts
+    monosans.ts
+    clarketm.ts
+    hookzof.ts
+    fate0.ts
+    sunny9577.ts
     shodan.ts
     censys.ts
     scanner/       ← Active port-scanner (targets.ts, tcp-probe.ts, etc.)

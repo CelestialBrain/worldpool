@@ -95,7 +95,7 @@ export class Executor {
           requestConfig.httpsAgent = httpsAgent;
         }
 
-        const response = await axios(requestConfig as any);
+        const response = await axios.request(requestConfig as Parameters<typeof axios.request>[0]);
 
         const responseBody = typeof response.data === 'string'
           ? response.data

@@ -57,7 +57,7 @@ export const CreateJobSchema = z.object({
   }
 });
 
-export type CreateJobInput = z.infer<typeof CreateJobSchema>;
+export type CreateJobInput = z.input<typeof CreateJobSchema>;
 
 // ─── Factory Functions ────────────────────────────────────────────────────────
 

@@ -18,12 +18,19 @@ export async function runPipeline(): Promise<void> {
   // Step 1: Scrape
   log.info('Step 1/5: Scraping proxies...');
   const raw = await scrapeAll();
+  if (raw.length === 0) {
+    log.error('All scrapers returned zero proxies — aborting pipeline');
+    return;
+  }
   log.info(`Scraped ${raw.length} proxies`);
 
   // Step 2: Validate (local)
   log.info('Step 2/5: Validating proxies...');
   const validated = await validateAll(raw);
   const aliveCount = validated.filter((p) => p.alive).length;
+  if (aliveCount === 0) {
+    log.warn('Zero alive proxies after validation — possible network issue or judge server down');
+  }
   log.info(`Validated: ${validated.length} total, ${aliveCount} alive`);
 
   // Step 3: Distributed validation (if Tendril is enabled)
@@ -42,6 +49,8 @@ export async function runPipeline(): Promise<void> {
   }
 
   // Step 4: Store
+  // Main proxy table always gets local validation results.
+  // Regional table (populated in step 3) stores per-region data separately.
   log.info('Step 4/5: Storing proxies...');
   upsertProxy(validated);
   log.info(`Stored ${validated.length} proxies`);

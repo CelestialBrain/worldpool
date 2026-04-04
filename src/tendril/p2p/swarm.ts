@@ -21,7 +21,7 @@ interface SwarmConfig {
 }
 
 interface PeerSocket {
-  socket: any;
+  socket: import('stream').Duplex;
   publicKey: Buffer;
 }
 
@@ -51,7 +51,7 @@ export class TendrilSwarm extends EventEmitter {
   }
 
   private setupEventHandlers(): void {
-    this.swarm.on('connection', (socket: any, info: any) => {
+    this.swarm.on('connection', (socket: import('stream').Duplex, info: { publicKey: Buffer; client: boolean }) => {
       const peerId = b4a.toString(info.publicKey, 'hex');
 
       this.connection.set(peerId, { socket, publicKey: info.publicKey });

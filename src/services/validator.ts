@@ -171,13 +171,15 @@ async function checkHijacked(
           return { hijacked: true, hijack_type: 'ssl_strip', hijack_body: sslBodyStr };
         }
       }
-    } catch {
+    } catch (httpsErr) {
       // HTTPS check failure is not penalised — proxy may not support HTTPS.
+      log.debug('HTTPS hijack check failed (proxy may not support HTTPS)', { error: String(httpsErr) });
     }
 
     return { hijacked: false };
-  } catch {
+  } catch (err) {
     // Network failure during hijack check — don't penalise the proxy.
+    log.debug('Hijack check network failure', { error: String(err) });
     return { hijacked: false };
   }
 }
@@ -220,7 +222,8 @@ export async function validateProxy(proxy: RawProxy): Promise<ValidatedProxy> {
       });
       alive = judgeRes.status >= 100 && judgeRes.status < 600;
       judgeHeaders = judgeRes.headers as Record<string, string | string[] | undefined>;
-    } catch {
+    } catch (judgeErr) {
+      log.debug(`Judge unreachable for ${proxyId}, falling back to httpbin`, { error: String(judgeErr) });
       // Judge unreachable — fall back to httpbin
       try {
         await axios.get('http://httpbin.org/ip', {
@@ -230,7 +233,8 @@ export async function validateProxy(proxy: RawProxy): Promise<ValidatedProxy> {
           validateStatus: () => true,
         });
         alive = true;
-      } catch {
+      } catch (httpbinErr) {
+        log.debug(`Both judge and httpbin failed for ${proxyId}`, { error: String(httpbinErr) });
         alive = false;
       }
     }
@@ -277,7 +281,8 @@ export async function validateProxy(proxy: RawProxy): Promise<ValidatedProxy> {
           validateStatus: () => true,
         });
         googlePass = gRes.status === 204;
-      } catch {
+      } catch (googleErr) {
+        log.debug(`Google pass check failed for ${proxyId}`, { error: String(googleErr) });
         googlePass = false;
       }
     }

@@ -73,7 +73,7 @@ Flagged proxies are exported to:
 
 ### 6. Resource Exhaustion / OOM — LOW with limits
 
-**Risk:** 100+ concurrent outbound connections with 8s timeouts = ~800 half-open sockets at peak. On a 1GB VPS, this can OOM.
+**Risk:** 100-150 concurrent outbound connections with 5s timeouts = hundreds of half-open sockets at peak. On a 1GB VPS, this can OOM.
 
 **Mitigation:**
 - Hard concurrency cap at 100 via `p-limit`

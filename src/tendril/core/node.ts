@@ -8,11 +8,11 @@ import { CompletionCounter } from '../conflict/counter-crdt.js';
 import { ConflictResolver } from '../conflict/resolver.js';
 import { Executor } from '../execution/executor.js';
 import { jobModel } from '../../models/job.js';
-import { createSeedJob } from '../job/model.js';
+import { createSeedJob, createJob as buildJob, type CreateJobInput } from '../job/model.js';
 import { JobStateMachine } from '../job/state.js';
 import { createMessage } from '../p2p/protocol.js';
-import { MessageType, PUBLIC_TOPIC } from '../types.js';
-import type { Job, ExecutionResult } from '../types.js';
+import { MessageType } from '../types.js';
+import type { Job, ExecutionResult, PNCounter, Message } from '../types.js';
 import { loadTendrilConfig, type TendrilConfig } from '../config.js';
 import { createLogger } from '../../utils/logger.js';
 
@@ -52,7 +52,7 @@ export class TendrilNode {
 
     const completionAdapter = {
       getValue: (jobId: string) => this.completionCounter.getValue(jobId),
-      merge: (jobId: string, remote: any) => this.completionCounter.merge(jobId, remote),
+      merge: (jobId: string, remote: PNCounter) => this.completionCounter.merge(jobId, remote),
       getAllStates: () => this.completionCounter.getAllStates(),
     };
 
@@ -72,14 +72,14 @@ export class TendrilNode {
     );
 
     // Wire swarm messages to handler
-    this.swarm.on('message', (peerId: string, message: any) => {
+    this.swarm.on('message', (peerId: string, message: Message) => {
       this.handler.handle(peerId, message).catch(err => {
         log.error('Handler error', { error: String(err) });
       });
     });
 
     // Wire result ACK events
-    this.handler.on('result:ack', (ack: any) => {
+    this.handler.on('result:ack', (ack: { resultId: string; jobId: string }) => {
       log.info('Result acknowledged', {
         result_id: ack.resultId.slice(0, 8),
         job_id: ack.jobId.slice(0, 8),
@@ -129,17 +129,7 @@ export class TendrilNode {
   }
 
   /** Create and announce a new job. */
-  createJob(input: {
-    targetUrl: string;
-    httpMethod?: string;
-    headerJson?: string;
-    bodyJson?: string;
-    proxyUrl?: string;
-    minCompletion?: number;
-    maxCompletion?: number;
-    isPublic?: boolean;
-  }): Job {
-    const { createJob: buildJob } = require('../job/model.js');
+  createJob(input: CreateJobInput): Job {
     const job = buildJob(input, this.nodeId);
 
     jobModel.save(job);
@@ -205,8 +195,6 @@ export class TendrilNode {
 
   /** Submit execution result to the job owner for ACK + scraps. */
   private submitResultToOwner(job: Job, result: ExecutionResult): void {
-    // Find the owner peer
-    const peers = this.swarm.getConnectedPeers();
     // Broadcast the result submission — any peer might be the owner or relay
     this.swarm.broadcast(createMessage(
       MessageType.RESULT_SUBMIT,

@@ -9,6 +9,11 @@ import { scrape as proxifly } from './proxifly.js';
 import { scrape as shodan } from './shodan.js';
 import { scrape as censys } from './censys.js';
 import { scrape as scanner } from './scanner/index.js';
+import { scrape as monosans } from './monosans.js';
+import { scrape as clarketm } from './clarketm.js';
+import { scrape as hookzof } from './hookzof.js';
+import { scrape as fate0 } from './fate0.js';
+import { scrape as sunny9577 } from './sunny9577.js';
 import type { RawProxy } from '../types.js';
 import { createLogger } from '../utils/logger.js';
 
@@ -23,9 +28,14 @@ export async function scrapeAll(): Promise<RawProxy[]> {
     shodan(),
     censys(),
     scanner(),
+    monosans(),
+    clarketm(),
+    hookzof(),
+    fate0(),
+    sunny9577(),
   ]);
 
-  const sourceNames = ['proxyscrape', 'geonode', 'thespeedx', 'proxifly', 'shodan', 'censys', 'scanner'];
+  const sourceNames = ['proxyscrape', 'geonode', 'thespeedx', 'proxifly', 'shodan', 'censys', 'scanner', 'monosans', 'clarketm', 'hookzof', 'fate0', 'sunny9577'];
   const allProxies: RawProxy[] = [];
 
   for (let i = 0; i < results.length; i++) {

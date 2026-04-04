@@ -4,16 +4,14 @@ Technical deep-dive into Worldpool's pipeline, validation strategy, and deployme
 
 ## Pipeline Overview
 
-Worldpool runs a 5-stage pipeline on a configurable schedule (default: every 6 hours via GitHub Actions).
+Worldpool runs a 5-stage pipeline every hour via GitHub Actions.
 
 ```
-┌─────────────┐    ┌──────────────┐    ┌────────────┐    ┌─────────┐    ┌──────────┐
-│  1. SCRAPE   │───▶│ 2. DEDUPLICATE│───▶│ 3. VALIDATE │───▶│ 4. STORE │───▶│ 5. EXPORT │
-│              │    │              │    │             │    │         │    │          │
-│ 7 sources    │    │ by host:port │    │ judge       │    │ SQLite  │    │ txt/json │
-│ in parallel  │    │ normalize    │    │ google 204  │    │ upsert  │    │ stats    │
-│              │    │              │    │ latency     │    │         │    │ README   │
-└─────────────┘    └──────────────┘    └────────────┘    └─────────┘    └──────────┘
+SCRAPE ──▶ DEDUP ──▶ VALIDATE ──▶ STORE ──▶ EXPORT
+12 sources   host:port   judge/httpbin   SQLite    txt/json
+in parallel  normalize   google 204      upsert    stats
+                         latency                   README
+                         hijack detect
 ```
 
 ## Stage 1: Scrape
@@ -22,15 +20,20 @@ Each source has its own fetcher in `src/scrapers/`. All run in parallel via `Pro
 
 ### Sources
 
-| Source | Type | Update Frequency | Format | Notes |
-|--------|------|-----------------|--------|-------|
-| **ProxyScrape** | REST API | Every minute | Raw text | Filterable by protocol, timeout, country |
-| **Geonode** | REST API | Every 5 min | JSON | Has `google_pass` flag built-in |
-| **TheSpeedX** | GitHub raw | Hourly | Text files | Separate files per protocol, high volume |
-| **Proxifly** | GitHub raw | Every 5 min | JSON | Structured with metadata |
-| **Shodan** | REST API | On-demand | JSON | Searches for open proxy ports (1080, 3128, 8080). Requires `SHODAN_API_KEY`. |
-| **Censys** | REST API | On-demand | JSON | Searches for open proxy services. Requires `CENSYS_API_ID` + `CENSYS_API_SECRET`. |
-| **Scanner** | Active probe | On-demand | Raw | Port-scans IP ranges from `data/scan-targets.txt`, respects `data/scan-exclude.txt`. Disabled by default (`SCANNER_ENABLED=true` to enable). |
+| Source | Type | Format | Notes |
+|--------|------|--------|-------|
+| **ProxyScrape** | REST API | Raw text | Filterable by protocol, timeout, country |
+| **Geonode** | REST API | JSON | Has built-in `google_pass` flag |
+| **TheSpeedX** | GitHub raw | Text files | Separate files per protocol, high volume |
+| **Proxifly** | GitHub raw | JSON | Structured with country metadata |
+| **Monosans** | GitHub raw | Text files | Updated hourly, per-protocol files |
+| **Clarketm** | GitHub raw | Text file | HTTP-only curated list |
+| **Hookzof** | GitHub raw | Text file | SOCKS5-focused |
+| **Fate0** | GitHub raw | JSONL | One JSON object per line with host, port, type, country |
+| **Sunny9577** | GitHub raw | Text files | Per-protocol files |
+| **Shodan** | REST API | JSON | Searches for open proxy ports (1080, 3128, 8080). Requires `SHODAN_API_KEY`. |
+| **Censys** | REST API | JSON | Searches for open proxy services. Requires `CENSYS_API_ID` + `CENSYS_API_SECRET`. |
+| **Scanner** | Active probe | Raw | Port-scans IP ranges from `data/scan-targets.txt`, respects `data/scan-exclude.txt`. Disabled by default (`SCANNER_ENABLED=true`). |
 
 ### Fetcher Contract
 
@@ -48,6 +51,7 @@ interface RawProxy {
   port: number;
   protocol: ProxyProtocol;
   country?: string;
+  source?: string;
 }
 ```
 
@@ -57,7 +61,7 @@ After all sources return, proxies are merged and deduplicated:
 
 1. Normalize host to lowercase, trim whitespace
 2. Generate key as `{host}:{port}`
-3. First-seen wins — if same proxy appears in multiple sources, keep the first one (preserves richer metadata from structured sources like Geonode)
+3. First-seen wins (preserves richer metadata from structured sources like Geonode)
 
 ## Stage 3: Validate
 
@@ -68,24 +72,40 @@ The most resource-intensive stage. Uses `p-limit` to cap concurrent outbound con
 | Check | Method | Pass Condition |
 |-------|--------|---------------|
 | **Alive** | HTTP GET through proxy to judge server | HTTP 200 within timeout |
-| **Anonymity** | Parse returned headers from judge | See anonymity classification below |
+| **Anonymity** | Parse returned headers from judge | See classification below |
 | **Google Pass** | GET `https://www.google.com/generate_204` through proxy | HTTP 204 response |
 | **Latency** | `Date.now()` delta around the alive check | Recorded in milliseconds |
+| **Hijack Detection** | Probe against known endpoint, classify tampering | 5 categories (see below) |
+| **Geolocation** | MaxMind GeoLite2 offline lookup or free API fallback | Country + ASN |
 
 ### Anonymity Classification
 
-The validator sends a request through the proxy to a **judge server** — a simple HTTP endpoint that echoes back all received request headers as JSON.
+The validator sends a request through the proxy to a judge server that echoes back all request headers.
 
 | Level | Condition |
 |-------|-----------|
-| **elite** | Real IP not in headers, no `Via`/`X-Forwarded-For`/`Proxy-Connection` headers |
+| **elite** | Real IP not in headers, no `Via`/`X-Forwarded-For`/`Proxy-Connection` |
 | **anonymous** | Real IP not in headers, but proxy-identifying headers present |
-| **transparent** | Real IP appears in `X-Forwarded-For` or similar headers |
+| **transparent** | Real IP appears in `X-Forwarded-For` or similar |
 | **unknown** | Validation failed or inconclusive |
+
+### Hijack Detection
+
+Each live proxy is probed against `httpbin.org/get`. Tampered responses are classified:
+
+| Category | Description |
+|----------|-------------|
+| `ad_injection` | Proxy injects advertising scripts/content |
+| `redirect` | Proxy redirects to a different destination |
+| `captive_portal` | Proxy presents a login/portal page |
+| `content_substitution` | Proxy modifies response body |
+| `ssl_strip` | Proxy strips TLS from HTTPS connections |
+
+Flagged proxies are permanently excluded from the served pool and exported to threat-intel files.
 
 ### Judge Server
 
-Self-hosted, minimal — a 10-line Hono endpoint:
+Self-hosted, minimal — a Hono endpoint that echoes headers with token auth:
 
 ```typescript
 app.get('/judge', (c) => {
@@ -101,81 +121,50 @@ Must be deployed on a known IP so the validator can detect whether that IP leaks
 
 ```
 Main thread
-  └── p-limit(100) ← configurable, hard max 200
+  └── p-limit(100) ← configurable via VALIDATOR_CONCURRENCY, hard max 200
         ├── validateProxy(proxy1) → axios through ProxyAgent
         ├── validateProxy(proxy2) → axios through ProxyAgent
-        ├── validateProxy(proxy3) → ...
         └── ... (up to 100 concurrent)
 ```
-
-For future scale: move to `worker_threads` with a shared work queue.
 
 ## Stage 4: Store
 
 SQLite with WAL mode. Single `proxy` table, upserted by `proxy_id` (natural key = `host:port`).
 
-See [`migrations/001_init.sql`](../migrations/001_init.sql) for full schema.
-
 ### Upsert Strategy
 
-```sql
-INSERT INTO proxy
-  (proxy_id, host, port, protocol, anonymity, latency_ms, google_pass, alive,
-   hijacked, hijack_type, hijack_body, asn, country, source, last_checked, created_at)
-VALUES (...)
-ON CONFLICT(proxy_id) DO UPDATE SET
-  anonymity    = excluded.anonymity,
-  latency_ms   = excluded.latency_ms,
-  google_pass  = excluded.google_pass,
-  alive        = excluded.alive,
-  hijacked     = excluded.hijacked,
-  hijack_type  = excluded.hijack_type,
-  hijack_body  = excluded.hijack_body,
-  asn          = excluded.asn,
-  country      = excluded.country,
-  source       = excluded.source,
-  last_checked = excluded.last_checked
-```
-
-This means:
 - New proxies get inserted
 - Known proxies get their validation results updated
 - Dead proxies stay in the DB with `alive = 0` (historical record)
+- `reliability_pct` = `alive_count / check_count * 100` — tracked over time
+
+See `migrations/001_init.sql` for full schema.
 
 ## Stage 5: Export
 
 After storage, the exporter generates:
 
-1. **Flat text files** in `proxies/` — one `host:port` per line, split by protocol and quality tier
-2. **Threat-intel files** in `proxies/` — hijacked proxy records for downstream consumption:
-   - `proxies/hijacked.txt` — plain list of hijacked proxy IPs (`host:port` per line)
-   - `proxies/hijacked.json` — full hijacked proxy details with classification (`hijack_type`, `hijack_body`, `country`, `asn`)
-   - `proxies/malicious-asn.txt` — ASNs ranked by hijacked proxy count
+1. **Flat text files** in `proxies/` — one `host:port` per line, split by protocol, speed tier, and anonymity
+2. **Threat-intel files** — hijacked proxy records (`hijacked.txt`, `hijacked.json`, `malicious-asn.txt`)
 3. **JSON exports** in `data/` — full structured data + stats snapshot
-4. **README update** — replaces the stats section between `<!-- STATS_START -->` and `<!-- STATS_END -->` markers
+4. **README update** — replaces the stats section between marker comments
+5. **CHANGELOG append** — logs deltas (alive count, hijacked, google pass, latency)
 
-## Deployment Model
+## Deployment
 
 ### GitHub Actions (Primary)
 
 ```yaml
 schedule:
-  - cron: '0 */6 * * *'  # every 6 hours
+  - cron: '0 * * * *'  # every hour
 ```
 
-The Actions workflow:
+The workflow:
 1. Checks out the repo
 2. Installs dependencies
-3. Downloads GeoLite2-Country and GeoLite2-ASN databases when `MAXMIND_LICENSE_KEY` is set
+3. Downloads GeoLite2 databases (when `MAXMIND_LICENSE_KEY` is set)
 4. Runs `npm run pipeline`
-5. Commits changed files in `proxies/` and `data/` back to the repo
-6. Updates README stats
-
-**Optional env vars:**
-- `MAXMIND_LICENSE_KEY` — enables offline geolocation (country + ASN)
-- `SHODAN_API_KEY` — enables Shodan proxy discovery
-- `CENSYS_API_ID` + `CENSYS_API_SECRET` — enables Censys proxy discovery
-- `SCANNER_ENABLED=true` — enables active port scanning against `data/scan-targets.txt`
+5. Commits changed files back to the repo
 
 Every run uses a fresh Azure runner IP — good for avoiding rate limits on proxy sources.
 
@@ -186,73 +175,56 @@ For real-time API access:
 2. Pipeline runs on schedule, API serves latest results from SQLite
 3. Judge endpoint self-hosted on the same server
 
-**Rule:** Never run the validator on the same VPS as production scraping apps. Treat validator nodes as throwaway.
+**Rule:** Never run the validator on the same VPS as production apps. Treat validator nodes as throwaway.
 
 ## Opt-out System
 
-IP operators can request that their IPs or CIDR ranges be excluded from the active scanner:
+IP operators can request exclusion from the active scanner via `POST /optout`. Exclusions are appended to `data/scan-exclude.txt` and respected on every scan run. The file is committed back to the repo by GitHub Actions, so exclusions persist across runs.
+
+## Tendril: Distributed Validation
+
+Optional P2P layer (enable with `TENDRIL_ENABLED=true`). Distributes proxy validation jobs across volunteer nodes via Hyperswarm.
+
+### Architecture
 
 ```
-POST /optout
-Content-Type: application/json
-
-{ "ip": "1.2.3.4" }        — exclude a single IP
-{ "cidr": "1.2.3.0/24" }   — exclude a CIDR range
+SDK Layer (worldpool-tendril)
+  t.get() / t.post() / t.batch() / t.getProxy()
+    │
+Node Layer (TendrilNode)
+  Orchestrates: swarm, handler, executor, conflict resolution
+    │
+P2P Layer (Hyperswarm)
+  DHT discovery, NAT traversal, MsgPack messages
+    │
+Data Layer (SQLite)
+  job, tendril_node, regional_validation, scrap_transaction
 ```
 
-Exclusions are appended to `data/scan-exclude.txt`. The scanner reads this file at startup on every run and skips any IPs matching an excluded entry. The file is committed back to the repo by the Actions workflow, so exclusions persist across runs.
+### Flow
 
-## Tendril: Distributed Scraping Subsystem
-
-Worldpool includes an optional P2P distributed scraping layer called **Tendril** (ported from [TendrilHive](https://github.com/CelestialBrain/tendrilhive)). When enabled (`TENDRIL_ENABLED=true`), it adds a Step 3 to the pipeline: distributing proxy validation jobs across a swarm of volunteer nodes.
-
-### Architecture Layers
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  SDK Layer (worldpool-tendril)                                  │
-│  t.get() / t.post() / t.batch() / t.getProxy()                │
-├─────────────────────────────────────────────────────────────────┤
-│  Node Layer (TendrilNode)                                       │
-│  Orchestrates: swarm, handler, executor, conflict resolution    │
-├─────────────────────────────────────────────────────────────────┤
-│  P2P Layer (Hyperswarm)                                         │
-│  DHT discovery ← NAT traversal ← MsgPack messages              │
-├─────────────────────────────────────────────────────────────────┤
-│  Data Layer (SQLite)                                            │
-│  job, tendril_node, regional_validation, scrap_transaction      │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### How It Works
-
-1. **Pipeline posts validation jobs** — after local validation, the pipeline creates one job per alive proxy targeted at `httpbin.org/ip`, routed through that proxy.
-2. **Jobs propagate via Hyperswarm** — DHT-based peer discovery broadcasts jobs to all connected nodes using MsgPack-encoded messages.
-3. **Nodes execute locally** — each peer executes the job from their own IP/region, recording alive/latency/google_pass.
-4. **Results flow back** — execution results are stored in the `regional_validation` table, giving per-region availability data.
+1. Pipeline posts validation jobs after local validation
+2. Jobs propagate via Hyperswarm DHT to all connected nodes
+3. Each peer executes from their own IP/region, recording alive/latency/google_pass
+4. Results stored in `regional_validation` table — per-region availability data
 
 ### Conflict Resolution
 
-The system uses two CRDT primitives to maintain consistency without a central coordinator:
+- **Vector Clocks** — track causality for job updates. Concurrent edits resolved deterministically.
+- **PN-Counters** — track job completion counts across nodes without coordination.
 
-- **Vector Clocks** — track causality for job updates. Concurrent edits are resolved deterministically: higher multiplier → more recent timestamp → lower lexicographic ID.
-- **PN-Counters** — track job completion counts. Each node increments its own positive counter; the global count is the sum of all nodes' (P - N) values.
+### Security: Public vs Private Topics
 
-### Security: Public vs. Private Topics
+| Topic | Who Can Join | Auth Headers | Use Case |
+|-------|-------------|-------------|----------|
+| Public (`worldpool`) | Anyone | Blocked | Anonymous proxy validation |
+| Private (user-defined) | Nodes you control | Allowed | Authenticated scraping |
 
-| Topic Type | Who Can Join | Auth Headers Allowed | Use Case |
-|------------|-------------|---------------------|----------|
-| **Public** (`worldpool`) | Anyone | ❌ Blocked by SDK guard | Anonymous proxy validation |
-| **Private** (user-defined) | Only nodes you control | ✅ Allowed | Authenticated scraping |
+### Regional Validation
 
-The SDK throws an explicit error if you attempt to send `Authorization`, `Cookie`, `X-API-Key`, or similar headers on the public topic. This prevents credential leakage to unknown nodes.
-
-### Regional Validation Table
-
-The killer feature — data nobody else publishes:
+The killer feature — geo-scoped data nobody else publishes:
 
 ```sql
--- A single proxy validated from 3 regions simultaneously
 proxy_id │ region │ alive │ latency_ms │ google_pass
 ─────────┼────────┼───────┼────────────┼────────────
 1.2.3.4  │ PH     │ 1     │ 45         │ 1
@@ -260,15 +232,6 @@ proxy_id │ region │ alive │ latency_ms │ google_pass
 1.2.3.4  │ US     │ 1     │ 220        │ 1
 ```
 
-### Flywheel
-
-```
-More nodes → faster validation → more regional data
-     ↑                                      │
-     └── better proxy pool ← more users ←───┘
-```
-
 ## Threat Model
 
 See [SECURITY.md](SECURITY.md) for the full threat analysis and mitigations.
-
