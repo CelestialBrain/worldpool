@@ -115,20 +115,22 @@ src/
     exporter.ts
     geolocator.ts  ← MaxMind GeoLite2-Country + GeoLite2-ASN lookups
     optout.ts      ← POST /optout endpoint + scan-exclude.txt writer
+  middleware/      ← Hono middleware
+    rate-limit.ts  ← 60 req/min per IP, sliding window
   scrapers/        ← Per-source fetchers (34 sources)
-    proxyscrape.ts     geonode.ts        thespeedx.ts
-    proxifly.ts        monosans.ts       clarketm.ts
-    hookzof.ts         fate0.ts          sunny9577.ts
-    ercin.ts           murongpig.ts      r00tee.ts
-    casa.ts            jetkai.ts         mmpx12.ts
-    vakhov.ts          iplocate.ts       zloi.ts
-    spysme.ts          databay.ts        prxchk.ts
-    clearproxy.ts      dinoz0rg.ts       proxyscraper-gh.ts
-    zevtyardt.ts       fyvri.ts          vmheaven.ts
-    vanndev.ts         roosterkid.ts     freeproxylist.ts
-    shodan.ts          censys.ts
-    scanner/       ← Active port-scanner (targets.ts, tcp-probe.ts, etc.)
-    index.ts       ← Declarative registry + dedup
+    index.ts       ← Declarative registry, dedup, 50k cap
+    proxyscrape.ts   geonode.ts         thespeedx.ts
+    proxifly.ts      monosans.ts        clarketm.ts
+    hookzof.ts       fate0.ts           sunny9577.ts
+    ercin.ts         murongpig.ts       r00tee.ts
+    casa.ts          jetkai.ts          mmpx12.ts
+    vakhov.ts        iplocate.ts        zloi.ts
+    spysme.ts        databay.ts         prxchk.ts
+    clearproxy.ts    dinoz0rg.ts        proxyscraper-gh.ts
+    zevtyardt.ts     fyvri.ts           vmheaven.ts
+    vanndev.ts       roosterkid.ts      freeproxylist.ts
+    shodan.ts        censys.ts
+    scanner/       ← Active port-scanner (tcp-probe.ts, fingerprint.ts, etc.)
   routes/          ← Hono HTTP handlers (no raw SQL)
   utils/           ← Shared utilities (logger, db connection)
   index.ts         ← Entry point (Hono server)

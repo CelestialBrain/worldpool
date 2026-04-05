@@ -11,99 +11,89 @@
 
 **Global proxy pool. Self-maintaining, free, open.**
 
-Worldpool aggregates proxies from 34 sources, validates every one for liveness, anonymity, latency, hijack detection, and site-specific pass checks (Google, Discord, TikTok, Instagram, X, Reddit), then exports curated lists and serves them via a REST API. The pipeline runs hourly on GitHub Actions.
+Worldpool aggregates proxies from 34 sources, validates every one for liveness, anonymity, latency, hijack detection, and site-specific reachability (Google, Discord, TikTok, Instagram, X, Reddit), then exports curated lists and serves them via a REST API. Runs hourly on GitHub Actions.
 
 ---
 
 ## Pipeline
 
 ```
-SCRAPE ─── 34 sources in parallel (~100k+ raw)
+SCRAPE ─── 34 sources in parallel
   │
 DEDUP ──── normalize host:port, first-seen wins
   │
-VALIDATE ─ alive, anonymity, latency, google 204, hijack detection (5 types)
+VALIDATE ─ alive, anonymity, latency, hijack detection, site-pass checks
   │
-  ├── SITE PASS ── test each alive proxy against Discord, TikTok, Instagram, X, Reddit
+  ├── [optional] TENDRIL ── P2P distributed validation from multiple regions
   │
-  ├── [optional] TENDRIL ── P2P swarm validates from multiple regions worldwide
+STORE ──── SQLite upsert, reliability tracking over time
   │
-STORE ──── SQLite upsert by host:port, track reliability over time
-  │
-EXPORT ─── flat text files, structured JSON, per-site exports, stats, README badges
+EXPORT ─── text files by protocol/speed/site/anonymity, JSON, stats
 ```
 
-### Sources (34)
+---
 
-#### APIs
-| Source | Protocols | Notes |
-|--------|-----------|-------|
-| ProxyScrape | HTTP, SOCKS4, SOCKS5 | Filterable by protocol/timeout/country |
-| Geonode | HTTP, SOCKS4, SOCKS5 | Built-in google_pass flag |
-| Databay | HTTP, SOCKS4, SOCKS5 | Free API, ~7.5k, no auth |
-| Shodan | HTTP, SOCKS4, SOCKS5 | Requires `SHODAN_API_KEY` |
-| Censys | HTTP, SOCKS5 | Requires `CENSYS_API_ID` + `CENSYS_API_SECRET` |
+## Sources
 
-#### GitHub Repos (raw text)
-| Source | Est. Proxies | Update Freq |
-|--------|-------------|-------------|
-| ErcinDedeoglu/proxies | ~39k | Hourly |
-| fyvri/fresh-proxy-list | ~8-15k | Hourly |
-| vmheaven/VMHeaven | ~9-15k | Every 15 min |
-| MuRongPIG/Proxy-Master | ~8k+ | Frequent |
-| iplocate/free-proxy-list | ~8k+ | Every 30 min |
-| TheSpeedX/PROXY-List | ~7k | Hourly |
-| r00tee/Proxy-List | ~5k+ | Every 5 min |
-| casa-ls/proxy-list | ~5k+ | Every 5 min |
-| ProxyScraper/ProxyScraper | ~5k+ | Every 30 min |
-| zevtyardt/proxy-list | ~8-10k | Daily |
-| dinoz0rg/proxy-list | ~10k+ | Every 2 hours |
-| Proxifly | ~3k | Every 5 min |
-| jetkai/proxy-list | ~3k+ | Hourly |
-| Sunny9577 | ~1.8k | Frequent |
-| Vann-Dev/proxy-list | ~1.5k | Checked to Google/Discord/TikTok |
-| mmpx12/proxy-list | ~1k | Hourly |
-| vakhov/fresh-proxy-list | ~900 | Every 5-20 min |
-| ClearProxy/checked-proxy-list | ~800 | Every 5 min |
-| Monosans | ~500 | Hourly |
-| Clarketm | ~400 | Curated |
-| Fate0 | ~250 | JSONL with country metadata |
-| prxchk/proxy-list | ~100+ | Every 10 min |
-| Hookzof | ~100 | SOCKS5-focused |
-| roosterkid/openproxylist | ~60-200 | Hourly |
-| zloi-user/hideip.me | Varies | Every 10 min, includes country |
-| Spys.me | ~400 | Custom format with anonymity data |
+34 sources running in parallel. Each source failing doesn't block the others. Per-source cap of 50k proxies to prevent memory issues.
 
-#### HTML Scraping
-| Source | Protocols | Notes |
-|--------|-----------|-------|
-| free-proxy-list.net | HTTP | Updated every 10 min |
-| sslproxies.org | HTTPS | Same operator |
-| us-proxy.org | HTTP | US proxies focus |
-| socks-proxy.net | SOCKS4, SOCKS5 | Same operator |
+| Source | Type | Proxies | Update Freq |
+|--------|------|---------|-------------|
+| ErcinDedeoglu/proxies | GitHub | ~37k | Hourly |
+| vmheaven/VMHeaven | GitHub | ~19k | Every 15 min |
+| zevtyardt/proxy-list | GitHub | ~15k | Daily |
+| r00tee/Proxy-List | GitHub | ~10k | Every 5 min |
+| TheSpeedX/PROXY-List | GitHub | ~8k | Hourly |
+| ProxyScraper/ProxyScraper | GitHub | ~8k | Every 30 min |
+| dinoz0rg/proxy-list | GitHub | ~5k (checked) | Every 2 hours |
+| jetkai/proxy-list | GitHub | ~4k | Hourly |
+| Proxifly | GitHub | ~3k | Every 5 min |
+| iplocate/free-proxy-list | GitHub | ~2.5k | Every 30 min |
+| sunny9577/proxy-scraper | GitHub | ~2.2k | Frequent |
+| mmpx12/proxy-list | GitHub | ~1.5k | Hourly |
+| Vann-Dev/proxy-list | GitHub | ~1.5k | Site-checked |
+| zloi-user/hideip.me | GitHub | ~1.3k | Every 10 min |
+| Databay | API | ~1k | Every 10 min |
+| free-proxy-list.net (4 sites) | HTML | ~900 | Every 10 min |
+| ProxyScrape | API | ~900 | Real-time |
+| ClearProxy/checked-proxy-list | GitHub | ~800 | Every 5 min |
+| spys.me | Web | ~800 | Hourly |
+| vakhov/fresh-proxy-list | GitHub | ~700 | Every 5-20 min |
+| Geonode | API | ~500 | Every 5 min |
+| clarketm/proxy-list | GitHub | ~400 | Curated |
+| fyvri/fresh-proxy-list | GitHub | ~300+ | Hourly |
+| MuRongPIG/Proxy-Master | GitHub | ~300+ | Frequent |
+| casa-ls/proxy-list | GitHub | ~300+ | Every 5 min |
+| Fate0/proxylist | GitHub | ~250 | JSONL |
+| roosterkid/openproxylist | GitHub | ~230 | Hourly |
+| Monosans | GitHub | ~200 | Hourly |
+| prxchk/proxy-list | GitHub | ~100 | Every 10 min |
+| Hookzof/socks5_list | GitHub | ~90 | SOCKS5 only |
+| Shodan | API | Varies | Requires API key |
+| Censys | API | Varies | Requires API key |
+| Scanner | Active probe | Varies | Disabled by default |
 
-#### Active Probing
-| Source | Notes |
-|--------|-------|
-| Scanner | Port-scans IP ranges. Disabled by default (`SCANNER_ENABLED=true`) |
+---
 
-### Validation Checks
+## Validation
 
-| Check | Method |
-|-------|--------|
-| Alive | HTTP GET through proxy to judge server (fallback: httpbin.org) |
-| Anonymity | Parse echoed headers: elite, anonymous, transparent |
-| Google Pass | `GET https://www.google.com/generate_204` |
-| Latency | Round-trip time in milliseconds |
-| Hijack Detection | 5 categories: ad injection, redirect, captive portal, content substitution, SSL strip |
-| Geolocation | MaxMind GeoLite2 (offline) or free API fallback |
-| Site Pass | Discord, TikTok, Instagram, X, Reddit — lightweight endpoint checks |
+Every proxy goes through these checks:
+
+| Check | What it does |
+|-------|-------------|
+| **Alive** | HTTP request through proxy to judge server or httpbin.org |
+| **Anonymity** | Classifies as elite, anonymous, or transparent based on leaked headers |
+| **Latency** | Round-trip time in milliseconds |
+| **Google Pass** | Can the proxy reach `google.com/generate_204`? |
+| **Hijack Detection** | Detects ad injection, redirects, captive portals, content substitution, SSL stripping |
+| **Site Pass** | Tests reachability to Discord, TikTok, Instagram, X/Twitter, Reddit |
+| **Geolocation** | Country + ASN via MaxMind GeoLite2 or free API fallback |
 
 ---
 
 ## Proxy Files
 
-Updated automatically every hour via GitHub Actions.
+Updated automatically every hour.
 
 ### By Protocol
 | File | Description |
@@ -116,10 +106,10 @@ Updated automatically every hour via GitHub Actions.
 ### By Quality
 | File | Description |
 |------|-------------|
-| [`proxies/elite.txt`](proxies/elite.txt) | Elite anonymity only |
-| [`proxies/google-pass.txt`](proxies/google-pass.txt) | Passes Google's `generate_204` |
-| [`proxies/by-anonymity/elite.txt`](proxies/by-anonymity/elite.txt) | Elite anonymity |
-| [`proxies/by-anonymity/anonymous.txt`](proxies/by-anonymity/anonymous.txt) | Anonymous (non-elite) |
+| [`proxies/elite.txt`](proxies/elite.txt) | Elite anonymity |
+| [`proxies/google-pass.txt`](proxies/google-pass.txt) | Passes Google |
+| [`proxies/by-anonymity/elite.txt`](proxies/by-anonymity/elite.txt) | Elite |
+| [`proxies/by-anonymity/anonymous.txt`](proxies/by-anonymity/anonymous.txt) | Anonymous |
 
 ### By Speed
 | File | Description |
@@ -129,7 +119,7 @@ Updated automatically every hour via GitHub Actions.
 | [`proxies/by-speed/medium.txt`](proxies/by-speed/medium.txt) | 500-2000ms |
 | [`proxies/by-speed/slow.txt`](proxies/by-speed/slow.txt) | > 2000ms |
 
-### By Site (which platforms this proxy can reach)
+### By Site
 | File | Description |
 |------|-------------|
 | [`proxies/by-site/google.txt`](proxies/by-site/google.txt) | Works with Google |
@@ -143,50 +133,28 @@ Updated automatically every hour via GitHub Actions.
 | File | Description |
 |------|-------------|
 | [`proxies/hijacked.txt`](proxies/hijacked.txt) | Hijacked proxy IPs |
-| [`proxies/hijacked.json`](proxies/hijacked.json) | Full hijack details with classification |
-| [`proxies/malicious-asn.txt`](proxies/malicious-asn.txt) | ASNs ranked by hijacked proxy count |
+| [`proxies/hijacked.json`](proxies/hijacked.json) | Full hijack details |
+| [`proxies/malicious-asn.txt`](proxies/malicious-asn.txt) | ASNs ranked by hijacked count |
 
 ### Structured Data
 | File | Description |
 |------|-------------|
-| [`data/proxies.json`](data/proxies.json) | Full proxy list with metadata |
-| [`data/stats.json`](data/stats.json) | Pool health snapshot |
+| [`data/proxies.json`](data/proxies.json) | Full proxy list with all metadata |
+| [`data/stats.json`](data/stats.json) | Pool health snapshot with source quality |
 
 ---
 
 ## API
 
-REST API on port 3000. Rate limited to 60 requests/min per IP.
+REST API on port 3000. Rate limited to 60 req/min per IP.
 
-### `GET /proxies`
-
-Returns filtered proxies sorted by latency.
-
-| Param | Type | Description |
-|-------|------|-------------|
-| `protocol` | `http\|socks4\|socks5` | Filter by protocol |
-| `anonymity` | `elite\|anonymous\|transparent` | Filter by anonymity |
-| `google_pass` | `true` | Only Google-pass proxies |
-| `max_latency_ms` | `number` | Maximum latency |
-| `limit` | `number` | Max results (default 100, max 1000) |
-| `offset` | `number` | Pagination offset |
-| `format` | `json\|txt` | Response format (default json) |
-
-### `GET /proxies/random`
-
-Single random proxy. Same filters as `/proxies`.
-
-### `GET /stats`
-
-Pool health and protocol breakdown.
-
-### `POST /refresh`
-
-Trigger a full pipeline run. Requires `X-Admin-Token` header. 10-minute timeout, rejects concurrent runs.
-
-### `POST /optout`
-
-Exclude an IP or CIDR from the active scanner.
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/proxies` | GET | Filtered proxy list. Params: `protocol`, `anonymity`, `google_pass`, `max_latency_ms`, `limit`, `offset`, `format` (json/txt) |
+| `/proxies/random` | GET | Single random proxy. Same filters |
+| `/stats` | GET | Pool health and protocol breakdown |
+| `/refresh` | POST | Trigger pipeline run. Requires `X-Admin-Token`. 10-min timeout |
+| `/optout` | POST | Exclude IP/CIDR from scanner. Body: `{"ip":"1.2.3.4"}` or `{"cidr":"1.2.3.0/24"}` |
 
 ---
 
@@ -218,42 +186,38 @@ npm start           # pipeline + API
 ### Test Proxies
 
 ```bash
-# Test 10 random Google-pass proxies
 npx tsx src/test-proxies.ts 10 proxies/google-pass.txt
-
-# Test 5 elite proxies
-npx tsx src/test-proxies.ts 5 proxies/elite.txt
-
-# Test Discord-passing proxies
-npx tsx src/test-proxies.ts 10 proxies/by-site/discord.txt
+npx tsx src/test-proxies.ts 5 proxies/by-site/discord.txt
+npx tsx src/test-proxies.ts 10 proxies/by-speed/fast.txt
 ```
 
 ### Environment Variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `JUDGE_URL` | No | Judge server URL (default: localhost) |
-| `JUDGE_TOKEN` | No | Judge server auth token |
-| `MAXMIND_LICENSE_KEY` | No | Enables offline geolocation |
-| `MAXMIND_ACCOUNT_ID` | No | MaxMind account ID |
-| `SHODAN_API_KEY` | No | Enables Shodan proxy discovery |
-| `CENSYS_API_ID` | No | Enables Censys proxy discovery |
-| `CENSYS_API_SECRET` | No | Censys API secret |
-| `SCANNER_ENABLED` | No | Set `true` to enable active scanner |
-| `TENDRIL_ENABLED` | No | Set `true` to enable P2P distributed validation |
-| `TENDRIL_REGION` | No | ISO country code for this node (e.g. `PH`) |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `JUDGE_URL` | `localhost:3001/judge` | Judge server for anonymity detection |
+| `JUDGE_TOKEN` | `dev-token` | Judge server auth |
+| `VALIDATOR_CONCURRENCY` | `100` | Parallel validation connections |
+| `VALIDATOR_TIMEOUT_MS` | `5000` | Per-proxy timeout |
+| `SKIP_GOOGLE_PASS` | `false` | Skip Google check |
+| `MAXMIND_LICENSE_KEY` | — | Enables offline geolocation |
+| `SHODAN_API_KEY` | — | Enables Shodan source |
+| `CENSYS_API_ID` / `SECRET` | — | Enables Censys source |
+| `SCANNER_ENABLED` | `false` | Enable active port scanner |
+| `TENDRIL_ENABLED` | `false` | Enable P2P distributed validation |
+| `TENDRIL_REGION` | `XX` | ISO country code for this node |
 
 ---
 
 ## Tendril: Distributed Validation
 
-Optional P2P layer. When enabled, nodes around the world validate proxies from their own region, producing geo-scoped availability data.
+Optional P2P layer. Nodes validate proxies from their own region via Hyperswarm DHT, producing geo-scoped availability data nobody else publishes.
 
 ```bash
 TENDRIL_ENABLED=true TENDRIL_REGION=PH npm run pipeline
 ```
 
-Auth headers are blocked on the public `worldpool` topic to prevent credential leakage. Use a private topic for authenticated scraping.
+Auth headers blocked on public topic. Use private topics for authenticated scraping.
 
 ---
 
@@ -262,30 +226,23 @@ Auth headers are blocked on the public `worldpool` topic to prevent credential l
 | Component | Technology |
 |-----------|-----------|
 | Runtime | Node.js 22+ (TypeScript, ESM) |
-| HTTP Framework | Hono |
-| Database | SQLite (better-sqlite3, WAL mode) |
-| Proxy Agents | proxy-agent, socks-proxy-agent |
-| P2P Networking | Hyperswarm (DHT + NAT traversal) |
-| Distributed State | CRDTs (PN-Counters, Vector Clocks) |
+| HTTP | Hono |
+| Database | SQLite (better-sqlite3, WAL) |
+| P2P | Hyperswarm + CRDTs |
 | Geolocation | MaxMind GeoLite2 |
-| Validation | Zod v4 |
-| CI/CD | GitHub Actions (hourly) |
+| CI/CD | GitHub Actions (hourly, cached) |
 
 ---
 
 ## Security
 
-- Judge server requires `X-Judge-Token` auth
-- Hijack detection flags and blocks tampered proxies (5 detection categories)
-- Site-pass checks verify reachability to popular platforms
-- Threat-intel exports for downstream consumption
-- Rate limiting on all API endpoints (60 req/min per IP)
-- Opt-out system for IP operators (`POST /optout`)
-- Concurrency hard-capped to prevent OOM
-- All proxy responses are try/catch guarded
-- Free proxies are untrusted — never route authenticated requests through them
-
 See [docs/SECURITY.md](docs/SECURITY.md) for the full threat model.
+
+- Hijack detection (5 categories) blocks tampered proxies
+- Rate limiting on all API endpoints
+- Judge server token auth
+- Opt-out system for IP operators
+- Free proxies are untrusted — never route credentials through them
 
 ---
 
