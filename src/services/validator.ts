@@ -327,7 +327,9 @@ export async function validateProxy(proxy: RawProxy): Promise<ValidatedProxy> {
     }
 
     // ── Site-pass checks ────────────────────────────────────────────
-    const sitePass = await checkSitePass(httpAgent, httpsAgent, config.validator.timeoutMs);
+    const sitePass = config.validator.skipSitePass
+      ? {}
+      : await checkSitePass(httpAgent, httpsAgent, config.validator.timeoutMs);
 
     return {
       ...base,

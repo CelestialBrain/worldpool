@@ -14,6 +14,7 @@ export const config = {
     timeoutMs: parseInt(process.env.VALIDATOR_TIMEOUT_MS ?? '5000', 10),
     maxMemoryPercent: 80,   // pause validation if memory exceeds this
     skipGooglePass: process.env.SKIP_GOOGLE_PASS === 'true',
+    skipSitePass: process.env.SKIP_SITE_PASS === 'true',
   },
 
   // ─── Judge Server ─────────────────────────────────────────────────────
