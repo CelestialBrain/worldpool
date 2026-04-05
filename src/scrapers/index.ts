@@ -77,7 +77,7 @@ const scrapers = [
 ];
 
 export async function scrapeAll(): Promise<RawProxy[]> {
-  const MAX_PER_SOURCE = 50_000; // safety cap — no single source should return more than this
+  const MAX_PER_SOURCE = 15_000; // cap per source — keeps total deduped pool under ~30k for 60-min timeout
 
   const results = await Promise.allSettled(scrapers.map(s => s.fn()));
   const allProxies: RawProxy[] = [];
