@@ -6,6 +6,7 @@ import { scrapeAll } from '../scrapers/index.js';
 import { validateAll } from './validator.js';
 import { upsertProxy } from '../models/proxy.js';
 import { exportFiles, updateReadmeStats } from './exporter.js';
+import { initStreamExport, streamResult } from './stream-export.js';
 import { config } from '../config.js';
 import { createLogger } from '../utils/logger.js';
 
@@ -24,9 +25,10 @@ export async function runPipeline(): Promise<void> {
   }
   log.info(`Scraped ${raw.length} proxies`);
 
-  // Step 2: Validate (local)
+  // Step 2: Validate (local) — stream results to text files as they come in
   log.info('Step 2/5: Validating proxies...');
-  const validated = await validateAll(raw);
+  initStreamExport();
+  const validated = await validateAll(raw, streamResult);
   const aliveCount = validated.filter((p) => p.alive).length;
   if (aliveCount === 0) {
     log.warn('Zero alive proxies after validation — possible network issue or judge server down');

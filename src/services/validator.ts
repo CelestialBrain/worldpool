@@ -346,7 +346,12 @@ export async function validateProxy(proxy: RawProxy): Promise<ValidatedProxy> {
   }
 }
 
-export async function validateAll(proxies: RawProxy[]): Promise<ValidatedProxy[]> {
+export type OnProxyResult = (result: ValidatedProxy) => void;
+
+export async function validateAll(
+  proxies: RawProxy[],
+  onResult?: OnProxyResult,
+): Promise<ValidatedProxy[]> {
   const limit = pLimit(config.validator.concurrency);
 
   log.info(`Validating ${proxies.length} proxies`, {
@@ -383,6 +388,9 @@ export async function validateAll(proxies: RawProxy[]): Promise<ValidatedProxy[]
         if (result.alive) aliveCount++;
         if (result.hijacked) hijackedCount++;
         results.push(result);
+
+        // Stream result to caller immediately
+        if (onResult) onResult(result);
 
         // Log progress every 100 proxies
         if (completed % 100 === 0 || completed === proxies.length) {
