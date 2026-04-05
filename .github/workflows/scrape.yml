@@ -26,15 +26,28 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Cache GeoLite2 databases
+        uses: actions/cache@v4
+        with:
+          path: data/*.mmdb
+          key: geolite2-${{ hashFiles('.github/workflows/scrape.yml') }}
+          restore-keys: geolite2-
+
       - name: Download GeoLite2 databases
+        continue-on-error: true
         run: |
           mkdir -p data
+          # Skip download if cached databases exist
+          if [ -f "data/GeoLite2-Country.mmdb" ] && [ -f "data/GeoLite2-ASN.mmdb" ]; then
+            echo "GeoLite2 databases found in cache — skipping download"
+            exit 0
+          fi
           if [ -n "$MAXMIND_LICENSE_KEY" ]; then
             for EDITION in GeoLite2-Country GeoLite2-City GeoLite2-ASN; do
-              curl -fsSL \
+              curl -fsSL --retry 2 \
                 "https://download.maxmind.com/app/geoip_download?edition_id=${EDITION}&license_key=${MAXMIND_LICENSE_KEY}&suffix=tar.gz" \
                 -u "${MAXMIND_ACCOUNT_ID}:${MAXMIND_LICENSE_KEY}" \
-                -o ${EDITION}.tar.gz
+                -o ${EDITION}.tar.gz || { echo "⚠ ${EDITION} download failed (rate limit?) — continuing"; continue; }
               tar -xzf ${EDITION}.tar.gz
               mv ${EDITION}_*/${EDITION}.mmdb data/${EDITION}.mmdb
               rm -rf ${EDITION}.tar.gz ${EDITION}_*/
