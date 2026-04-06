@@ -28,8 +28,10 @@ export async function scrape(): Promise<RawProxy[]> {
 
     // Guess protocol from port
     let protocol: RawProxy['protocol'] = 'http';
-    if (port === 1080) protocol = 'socks5';
-    else if (port === 4145 || port === 4153) protocol = 'socks4';
+    const socks5Ports = new Set([1080, 1081, 1082, 1085, 9050, 9150]);
+    const socks4Ports = new Set([4145, 4153]);
+    if (socks5Ports.has(port)) protocol = 'socks5';
+    else if (socks4Ports.has(port)) protocol = 'socks4';
 
     results.push({ host: host.toLowerCase().trim(), port, protocol, source: 'scanner' });
   }
