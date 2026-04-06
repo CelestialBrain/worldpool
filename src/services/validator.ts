@@ -223,11 +223,29 @@ async function checkSitePass(
   return results;
 }
 
-export async function validateProxy(proxy: RawProxy): Promise<ValidatedProxy> {
-  const proxyUrl = buildProxyUrl(proxy);
-  const proxyId = `${proxy.host}:${proxy.port}`;
-  const now = Math.floor(Date.now() / 1000);
+// Hard per-proxy timeout — kills the entire validation if it hangs.
+// Axios timeout only covers response wait, not stuck sockets.
+const PER_PROXY_HARD_TIMEOUT_MS = 30_000; // 30 seconds max per proxy, no exceptions
 
+async function withHardTimeout<T>(fn: () => Promise<T>, fallback: T, label: string): Promise<T> {
+  return new Promise<T>((resolve) => {
+    const timer = setTimeout(() => {
+      log.debug(`Hard timeout hit for ${label}`);
+      resolve(fallback);
+    }, PER_PROXY_HARD_TIMEOUT_MS);
+
+    fn().then((result) => {
+      clearTimeout(timer);
+      resolve(result);
+    }).catch(() => {
+      clearTimeout(timer);
+      resolve(fallback);
+    });
+  });
+}
+
+export async function validateProxy(proxy: RawProxy): Promise<ValidatedProxy> {
+  const proxyId = `${proxy.host}:${proxy.port}`;
   const base: ValidatedProxy = {
     proxy_id: proxyId,
     host: proxy.host,
@@ -240,8 +258,15 @@ export async function validateProxy(proxy: RawProxy): Promise<ValidatedProxy> {
     hijacked: false,
     country: proxy.country,
     source: proxy.source,
-    last_checked: now,
+    last_checked: Math.floor(Date.now() / 1000),
   };
+
+  return withHardTimeout(() => validateProxyInner(proxy, base), base, proxyId);
+}
+
+async function validateProxyInner(proxy: RawProxy, base: ValidatedProxy): Promise<ValidatedProxy> {
+  const proxyUrl = buildProxyUrl(proxy);
+  const proxyId = base.proxy_id;
 
   try {
     const { httpAgent, httpsAgent } = buildAgent(proxyUrl, proxy.protocol);
