@@ -30,7 +30,7 @@ import { scrape as clearproxy } from './clearproxy.js';
 import { scrape as dinoz0rg } from './dinoz0rg.js';
 import { scrape as proxyscraperGh } from './proxyscraper-gh.js';
 import { scrape as zevtyardt } from './zevtyardt.js';
-import { scrape as fyvri } from './fyvri.js';
+// fyvri removed — repo 404'd, was returning 0 proxies
 import { scrape as vmheaven } from './vmheaven.js';
 import { scrape as vanndev } from './vanndev.js';
 import { scrape as roosterkid } from './roosterkid.js';
@@ -70,7 +70,7 @@ const scrapers = [
   { name: 'dinoz0rg', fn: dinoz0rg },
   { name: 'proxyscraper-gh', fn: proxyscraperGh },
   { name: 'zevtyardt', fn: zevtyardt },
-  { name: 'fyvri', fn: fyvri },
+  // fyvri removed — repo 404'd
   { name: 'vmheaven', fn: vmheaven },
   { name: 'vanndev', fn: vanndev },
   { name: 'roosterkid', fn: roosterkid },

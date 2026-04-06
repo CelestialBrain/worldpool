@@ -7,12 +7,13 @@ import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('scraper:murongpig');
 
+// Use _checked variants — the unchecked files have 292k+ historical entries
 const BASE = 'https://raw.githubusercontent.com/MuRongPIG/Proxy-Master/main';
 
 const SOURCES: Array<{ url: string; protocol: ProxyProtocol }> = [
-  { url: `${BASE}/http.txt`, protocol: 'http' },
-  { url: `${BASE}/socks4.txt`, protocol: 'socks4' },
-  { url: `${BASE}/socks5.txt`, protocol: 'socks5' },
+  { url: `${BASE}/http_checked.txt`, protocol: 'http' },
+  { url: `${BASE}/socks4_checked.txt`, protocol: 'socks4' },
+  { url: `${BASE}/socks5_checked.txt`, protocol: 'socks5' },
 ];
 
 export async function scrape(): Promise<RawProxy[]> {
