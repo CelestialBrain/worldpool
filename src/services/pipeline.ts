@@ -4,7 +4,7 @@
 
 import { scrapeAll } from '../scrapers/index.js';
 import { validateAll } from './validator.js';
-import { upsertProxy } from '../models/proxy.js';
+import { upsertProxy, getRecentlyDeadProxyIds } from '../models/proxy.js';
 import { exportFiles, updateReadmeStats } from './exporter.js';
 import { initStreamExport, streamResult } from './stream-export.js';
 import { config } from '../config.js';
@@ -25,10 +25,28 @@ export async function runPipeline(): Promise<void> {
   }
   log.info(`Scraped ${raw.length} proxies`);
 
+  // Filter out proxies that were dead within the last 6 hours — no point re-checking
+  const BLACKLIST_WINDOW_SEC = 6 * 60 * 60; // 6 hours
+  let toValidate = raw;
+  try {
+    const recentlyDead = getRecentlyDeadProxyIds(BLACKLIST_WINDOW_SEC);
+    if (recentlyDead.size > 0) {
+      toValidate = raw.filter(p => !recentlyDead.has(`${p.host}:${p.port}`));
+      const skipped = raw.length - toValidate.length;
+      log.info(`Blacklist: skipping ${skipped} recently-dead proxies (checked within ${BLACKLIST_WINDOW_SEC / 3600}h)`, {
+        scraped: raw.length,
+        after_blacklist: toValidate.length,
+        blacklisted: skipped,
+      });
+    }
+  } catch (err) {
+    log.warn('Blacklist query failed (first run?) — validating all', { error: String(err) });
+  }
+
   // Step 2: Validate (local) — stream results to text files as they come in
   log.info('Step 2/5: Validating proxies...');
   initStreamExport();
-  const validated = await validateAll(raw, streamResult);
+  const validated = await validateAll(toValidate, streamResult);
   const aliveCount = validated.filter((p) => p.alive).length;
   if (aliveCount === 0) {
     log.warn('Zero alive proxies after validation — possible network issue or judge server down');

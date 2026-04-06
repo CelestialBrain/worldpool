@@ -315,6 +315,32 @@ export function queryBySitePass(site: string): ProxyResponse[] {
   return rows.map(rowToResponse);
 }
 
+/**
+ * Return proxy IDs that were checked within the last `withinSec` seconds
+ * and found dead. These can be skipped during the next validation run —
+ * no point re-checking a proxy that was dead 1 hour ago.
+ *
+ * Proxies that were alive on their last check are NOT returned — they
+ * must always be re-validated since they might have died.
+ *
+ * Proxies with consecutive dead checks beyond `maxConsecutiveDead` are
+ * also excluded (permanently dead, not worth retrying).
+ */
+export function getRecentlyDeadProxyIds(withinSec: number): Set<string> {
+  const db = getDb();
+  const cutoff = Math.floor(Date.now() / 1000) - withinSec;
+
+  const rows = db
+    .prepare(
+      `SELECT proxy_id FROM proxy
+       WHERE alive = 0
+         AND last_checked >= @cutoff`,
+    )
+    .all({ cutoff }) as Array<{ proxy_id: string }>;
+
+  return new Set(rows.map(r => r.proxy_id));
+}
+
 export function getSourceQuality(): SourceQuality[] {
   const db = getDb();
 
