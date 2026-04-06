@@ -2,7 +2,7 @@ name: Scrape & Validate Proxy Pool
 
 on:
   schedule:
-    - cron: '0 * * * *'        # every hour (unlimited for public repos)
+    - cron: '*/20 * * * *'     # every 20 minutes (free for public repos)
   workflow_dispatch:          # manual trigger from GitHub UI
 
 concurrency:
@@ -19,7 +19,7 @@ jobs:
   # ─── Phase 1: Scrape all sources, deduplicate, apply blacklist ───────
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
@@ -40,7 +40,7 @@ jobs:
       - name: Scrape & deduplicate
         run: npx tsx src/pipeline-scrape.ts
         env:
-          MAX_PER_SOURCE: '5000'
+          MAX_PER_SOURCE: '50000'
           BLACKLIST_WINDOW_SEC: '10800'
 
       - name: Upload proxy list
@@ -54,7 +54,7 @@ jobs:
   validate:
     needs: scrape
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -116,7 +116,7 @@ jobs:
           VALIDATOR_CONCURRENCY: '200'
           VALIDATOR_TIMEOUT_MS: '5000'
           SKIP_GOOGLE_PASS: 'false'
-          SKIP_SITE_PASS: 'true'
+          SKIP_SITE_PASS: 'false'
           JUDGE_URL: ${{ secrets.JUDGE_URL }}
           JUDGE_TOKEN: ${{ secrets.JUDGE_TOKEN }}
 
