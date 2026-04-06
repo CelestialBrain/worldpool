@@ -33,11 +33,17 @@ jobs:
           key: geolite2-${{ hashFiles('.github/workflows/scrape.yml') }}
           restore-keys: geolite2-
 
+      - name: Cache proxy database
+        uses: actions/cache@v4
+        with:
+          path: worldpool.db
+          key: proxydb-${{ github.run_number }}
+          restore-keys: proxydb-
+
       - name: Download GeoLite2 databases
         continue-on-error: true
         run: |
           mkdir -p data
-          # Skip download if cached databases exist
           if [ -f "data/GeoLite2-Country.mmdb" ] && [ -f "data/GeoLite2-ASN.mmdb" ]; then
             echo "GeoLite2 databases found in cache — skipping download"
             exit 0
@@ -47,7 +53,7 @@ jobs:
               curl -fsSL --retry 2 \
                 "https://download.maxmind.com/app/geoip_download?edition_id=${EDITION}&license_key=${MAXMIND_LICENSE_KEY}&suffix=tar.gz" \
                 -u "${MAXMIND_ACCOUNT_ID}:${MAXMIND_LICENSE_KEY}" \
-                -o ${EDITION}.tar.gz || { echo "⚠ ${EDITION} download failed (rate limit?) — continuing"; continue; }
+                -o ${EDITION}.tar.gz || { echo "⚠ ${EDITION} download failed — continuing"; continue; }
               tar -xzf ${EDITION}.tar.gz
               mv ${EDITION}_*/${EDITION}.mmdb data/${EDITION}.mmdb
               rm -rf ${EDITION}.tar.gz ${EDITION}_*/
@@ -66,8 +72,10 @@ jobs:
           NODE_ENV: production
           JUDGE_URL: ${{ secrets.JUDGE_URL }}
           JUDGE_TOKEN: ${{ secrets.JUDGE_TOKEN }}
-          VALIDATOR_CONCURRENCY: '150'
+          VALIDATOR_CONCURRENCY: '200'
           VALIDATOR_TIMEOUT_MS: '5000'
+          MAX_PER_SOURCE: '5000'
+          BLACKLIST_WINDOW_SEC: '10800'
           SKIP_GOOGLE_PASS: 'false'
           SKIP_SITE_PASS: 'true'
           SHODAN_API_KEY: ${{ secrets.SHODAN_API_KEY }}

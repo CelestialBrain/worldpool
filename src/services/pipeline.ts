@@ -25,15 +25,15 @@ export async function runPipeline(): Promise<void> {
   }
   log.info(`Scraped ${raw.length} proxies`);
 
-  // Filter out proxies that were dead within the last 6 hours — no point re-checking
-  const BLACKLIST_WINDOW_SEC = 6 * 60 * 60; // 6 hours
+  // Filter out proxies that were dead recently — no point re-checking
+  const blacklistSec = config.scraper.blacklistWindowSec;
   let toValidate = raw;
   try {
-    const recentlyDead = getRecentlyDeadProxyIds(BLACKLIST_WINDOW_SEC);
+    const recentlyDead = getRecentlyDeadProxyIds(blacklistSec);
     if (recentlyDead.size > 0) {
       toValidate = raw.filter(p => !recentlyDead.has(`${p.host}:${p.port}`));
       const skipped = raw.length - toValidate.length;
-      log.info(`Blacklist: skipping ${skipped} recently-dead proxies (checked within ${BLACKLIST_WINDOW_SEC / 3600}h)`, {
+      log.info(`Blacklist: skipping ${skipped} recently-dead proxies (checked within ${blacklistSec / 3600}h)`, {
         scraped: raw.length,
         after_blacklist: toValidate.length,
         blacklisted: skipped,

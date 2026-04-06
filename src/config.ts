@@ -17,6 +17,12 @@ export const config = {
     skipSitePass: process.env.SKIP_SITE_PASS === 'true',
   },
 
+  // ─── Scraper ─────────────────────────────────────────────────────────
+  scraper: {
+    maxPerSource: parseInt(process.env.MAX_PER_SOURCE ?? '5000', 10),
+    blacklistWindowSec: parseInt(process.env.BLACKLIST_WINDOW_SEC ?? String(3 * 60 * 60), 10), // 3 hours
+  },
+
   // ─── Judge Server ─────────────────────────────────────────────────────
   judge: {
     url: process.env.JUDGE_URL ?? 'http://localhost:3001/judge',

@@ -36,6 +36,7 @@ import { scrape as vanndev } from './vanndev.js';
 import { scrape as roosterkid } from './roosterkid.js';
 import { scrape as freeproxylist } from './freeproxylist.js';
 import type { RawProxy } from '../types.js';
+import { config } from '../config.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('scrapers');
@@ -77,7 +78,7 @@ const scrapers = [
 ];
 
 export async function scrapeAll(): Promise<RawProxy[]> {
-  const MAX_PER_SOURCE = 5_000; // cap per source — keeps total deduped pool under ~20k for 90-min timeout
+  const MAX_PER_SOURCE = config.scraper.maxPerSource;
 
   const results = await Promise.allSettled(scrapers.map(s => s.fn()));
   const allProxies: RawProxy[] = [];
