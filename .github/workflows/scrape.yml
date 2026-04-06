@@ -32,6 +32,7 @@ jobs:
           path: data/*.mmdb
           key: geolite2-${{ hashFiles('.github/workflows/scrape.yml') }}
           restore-keys: geolite2-
+          save-always: true
 
       - name: Cache proxy database
         uses: actions/cache@v4
@@ -39,6 +40,7 @@ jobs:
           path: worldpool.db
           key: proxydb-${{ github.run_number }}
           restore-keys: proxydb-
+          save-always: true
 
       - name: Download GeoLite2 databases
         continue-on-error: true
@@ -83,6 +85,7 @@ jobs:
           CENSYS_API_SECRET: ${{ secrets.CENSYS_API_SECRET }}
 
       - name: Commit updated proxy files
+        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
