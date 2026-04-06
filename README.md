@@ -44,46 +44,49 @@ MERGE (1 runner, ~15s)
 
 ## Sources (120+)
 
-| Source | Est. Proxies | Update Freq |
-|--------|-------------|-------------|
-| ErcinDedeoglu/proxies | ~37k | Hourly |
-| vmheaven/VMHeaven | ~19k | Every 15 min |
-| zevtyardt/proxy-list | ~15k | Daily |
-| r00tee/Proxy-List | ~10k | Every 5 min |
-| TheSpeedX/PROXY-List | ~8k | Hourly |
-| ProxyScraper/ProxyScraper | ~8k | Every 30 min |
-| dinoz0rg/proxy-list | ~5k (checked) | Every 2 hours |
-| jetkai/proxy-list | ~4k | Hourly |
-| Proxifly | ~3k | Every 5 min |
-| iplocate/free-proxy-list | ~2.5k | Every 30 min |
-| sunny9577 | ~2.2k | Frequent |
-| mmpx12/proxy-list | ~1.5k | Hourly |
-| Vann-Dev/proxy-list | ~1.5k | Site-checked |
-| zloi-user/hideip.me | ~1.3k | Every 10 min |
-| Databay API | ~1k | Every 10 min |
-| free-proxy-list.net (4 sites) | ~900 | Every 10 min |
-| ProxyScrape API | ~900 | Real-time |
-| ClearProxy | ~800 | Every 5 min |
-| spys.me | ~800 | Hourly |
-| vakhov | ~700 | Every 5-20 min |
-| Geonode API | ~500 | Every 5 min |
-| clarketm | ~400 | Curated |
-| fyvri | ~300+ | Hourly |
-| MuRongPIG | ~300+ | Frequent |
-| casa-ls | ~300+ | Every 5 min |
-| Fate0 | ~250 | JSONL |
-| roosterkid | ~230 | Hourly |
-| Monosans | ~200 | Hourly |
-| prxchk | ~100 | Every 10 min |
-| Hookzof | ~90 | SOCKS5 only |
-| Shodan API | Varies | Requires key |
-| Censys API | Varies | Requires key |
-| Scanner | Varies | Disabled by default |
+Actual counts from latest pipeline run (auto-updated):
+
+| Source | Proxies | Update Freq |
+|--------|---------|-------------|
+| casa-ls/proxy-list | 50,000 (capped) | Every 5 min |
+| ErcinDedeoglu/proxies | 33,607 | Hourly |
+| vmheaven/VMHeaven | 19,186 | Every 15 min |
+| zevtyardt/proxy-list | 15,412 | Daily |
+| r00tee/Proxy-List | 12,923 | Every 5 min |
+| TheSpeedX/PROXY-List | 6,820 | Hourly |
+| ProxyScraper/ProxyScraper | 6,820 | Every 30 min |
+| iplocate/free-proxy-list | 3,797 | Every 30 min |
+| jetkai/proxy-list | 3,809 | Hourly |
+| Proxifly | 3,169 | Every 5 min |
+| sunny9577 | 1,857 | Frequent |
+| mmpx12/proxy-list | 1,493 | Hourly |
+| Vann-Dev/proxy-list | 1,291 | Site-checked |
+| zloi-user/hideip.me | 1,137 | Every 10 min |
+| Databay API | 1,000 | Every 10 min |
+| dinoz0rg/proxy-list | 922 | Every 2 hours |
+| free-proxy-list.net (4 sites) | 900 | Every 10 min |
+| ProxyScrape API | 870 | Real-time |
+| ClearProxy | 807 | Every 5 min |
+| spys.me | 800 | Hourly |
+| vakhov | 723 | Every 5-20 min |
+| Geonode API | 500 | Every 5 min |
+| clarketm | 400 | Curated |
+| Fate0 | 251 | JSONL |
+| MuRongPIG (checked) | 244 | Frequent |
+| roosterkid | 231 | Hourly |
+| Monosans | 196 | Hourly |
+| prxchk | 100 | Every 10 min |
+| Hookzof | 63 | SOCKS5 only |
+| Shodan API | — | Requires key |
+| Censys API | — | Requires key |
+| VPS Scanner | Varies | Hetzner VPS, continuous |
 
 **Bulk GitHub sources (14 repos in single scraper):**
 ebrasha (~10k), Munachukwuw (~13k), gitrecon1455 (~10k), proxygenerator1 (~8k), dpangestuw (~7k), officialputuid (~4k), TuanMinPay (~3k), komutan234 (~3k), Anonym0usWork1221 (~3.6k), openproxyhub (~1.8k), Skiddle-ID (~1.9k), itsanwar (~1k), alphaa1111 (~900), trio666 (~2.1k)
 
 **Meta-source scraper:** Fetches [acidvegas/proxytools](https://github.com/acidvegas/proxytools) proxy_sources.txt — 76 curated API endpoints and raw URLs, scraped in parallel.
+
+**VPS Scanner:** Hetzner CX23 (Helsinki) probes datacenter CIDR ranges for open proxy ports. Discovered proxies pushed to `data/scanner-discovered.txt` and picked up by the next pipeline run.
 
 ---
 
