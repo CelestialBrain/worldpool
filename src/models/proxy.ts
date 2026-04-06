@@ -326,6 +326,21 @@ export function queryBySitePass(site: string): ProxyResponse[] {
  * Proxies with consecutive dead checks beyond `maxConsecutiveDead` are
  * also excluded (permanently dead, not worth retrying).
  */
+/**
+ * Return proxies that were alive on their last check.
+ * These should always be re-validated even if they don't appear in source lists.
+ */
+export function getPreviouslyAliveProxies(): Array<{ proxy_id: string; host: string; port: number; protocol: string; country: string | null; source: string | null }> {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT proxy_id, host, port, protocol, country, source
+       FROM proxy
+       WHERE alive = 1 AND hijacked = 0`,
+    )
+    .all() as Array<{ proxy_id: string; host: string; port: number; protocol: string; country: string | null; source: string | null }>;
+}
+
 export function getRecentlyDeadProxyIds(withinSec: number): Set<string> {
   const db = getDb();
   const cutoff = Math.floor(Date.now() / 1000) - withinSec;
