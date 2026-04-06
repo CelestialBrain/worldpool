@@ -117,7 +117,8 @@ CX23 (2 vCPU, 4GB RAM, Helsinki), €4.49/mo. Runs continuously via systemd.
 
 **Scanner settings:**
 - 500 concurrency, 5000 rate, 500ms timeout
-- Ports: 1080, 3128, 8080
+- 17 ports: 1080, 3128, 8080, 8888, 80, 443, 8443, 4145, 4153, 9050, 9150, 1081, 1082, 1085, 8181, 3129, 8118
+- ~1M probes per cycle, ~14 min per cycle, continuous (no sleep)
 - Targets: all unique IPs from `proxies/all-ever-seen.txt`
 - Processes in 10k chunks (prevents OOM)
 - ~2 min per full scan cycle, runs continuously

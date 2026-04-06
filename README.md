@@ -81,7 +81,7 @@ ebrasha (~10k), Munachukwuw (~13k), gitrecon1455 (~10k), proxygenerator1 (~8k), 
 
 **Meta-source scraper:** Fetches [acidvegas/proxytools](https://github.com/acidvegas/proxytools) proxy_sources.txt — 76 curated API endpoints and raw URLs, scraped in parallel.
 
-**VPS Scanner:** Hetzner CX23 (Helsinki) probes datacenter CIDR ranges for open proxy ports. Discovered proxies pushed to `data/scanner-discovered.txt` and picked up by the next pipeline run.
+**VPS Scanner:** Hetzner CX23 (Helsinki) runs continuously, probing 60k+ IPs across 17 ports (1080, 3128, 8080, 8888, 80, 443, 8443, 4145, 4153, 9050, 9150, 1081, 1082, 1085, 8181, 3129, 8118) at 500 concurrency. ~1M probes per cycle, ~14 min per cycle. Discovered proxies pushed to `data/scanner-discovered.txt` and picked up by the next pipeline run.
 
 ---
 
@@ -237,9 +237,9 @@ npx tsx src/test-proxies.ts 10 proxies/by-speed/fast.txt
 
 ### VPS Scanner (Hetzner Helsinki, €4.49/mo)
 
-Runs continuously via systemd. Each cycle:
+Runs continuously via systemd (~14 min per cycle, no sleep). Each cycle:
 1. Pulls latest `all-ever-seen.txt` from repo (gets new IPs from Actions)
-2. Probes 60k+ IPs on ports 1080/3128/8080 at 500 concurrency
+2. Probes 60k+ IPs across 17 ports (~1M probes) at 500 concurrency, 500ms timeout
 3. Writes `data/scanner-discovered.txt` and pushes to repo
 4. Actions picks up discoveries on next run
 
