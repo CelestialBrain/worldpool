@@ -21,7 +21,7 @@ MERGE (1 runner, ~15s)
 
 Entry point: `npm run pipeline:scrape` (`src/pipeline-scrape.ts`)
 
-120+ sources run in parallel via `Promise.allSettled()`. Per-source cap configurable via `MAX_PER_SOURCE` (default 50k). Results deduplicated by `host:port`, then previously-alive proxies from the DB are injected (ensures they get re-validated even if they dropped off source lists), then filtered against the blacklist (dead proxies from last 3 hours). Output uploaded as GitHub Actions artifact.
+120+ sources run in parallel via `Promise.allSettled()`. No per-source cap by default (set `MAX_PER_SOURCE` env var to limit). Dedup by `host:port` compresses ~1M+ raw proxies to ~100k unique. Results deduplicated by `host:port`, then previously-alive proxies from the DB are injected (ensures they get re-validated even if they dropped off source lists), then filtered against the blacklist (dead proxies from last 3 hours). Output uploaded as GitHub Actions artifact.
 
 **Source types:**
 - **REST APIs (5):** ProxyScrape, Geonode, Databay, Shodan (key required), Censys (key required)

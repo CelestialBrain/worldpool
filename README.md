@@ -211,7 +211,7 @@ npx tsx src/test-proxies.ts 10 proxies/by-speed/fast.txt
 |----------|---------|-------------|
 | `VALIDATOR_CONCURRENCY` | `100` | Parallel connections (CI uses 200) |
 | `VALIDATOR_TIMEOUT_MS` | `5000` | Per-proxy axios timeout |
-| `MAX_PER_SOURCE` | `50000` | Cap proxies per source |
+| `MAX_PER_SOURCE` | `0` (no cap) | Cap proxies per source (0 = unlimited) |
 | `BLACKLIST_WINDOW_SEC` | `10800` | Skip dead proxies checked within 3h |
 | `SKIP_GOOGLE_PASS` | `false` | Skip Google 204 check |
 | `SKIP_SITE_PASS` | `false` | Skip Discord/TikTok/IG/X/Reddit checks |
