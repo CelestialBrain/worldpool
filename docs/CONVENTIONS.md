@@ -106,19 +106,25 @@ data/              ← Auto-generated JSON exports + scanner config
 infra/
   explainer/       ← Static explainer page (index.html + nginx.conf)
 src/
-  types.ts         ← ProxyRow, ProxyResponse, enums, shared types
-  config.ts        ← Typed config with env overrides
-  models/          ← SQLite DAL (proxy.ts — upsert, query, stats)
-  services/        ← Business logic
-    validator.ts
-    pipeline.ts
-    exporter.ts
-    geolocator.ts  ← MaxMind GeoLite2-Country + GeoLite2-ASN lookups
-    optout.ts      ← POST /optout endpoint + scan-exclude.txt writer
-  middleware/      ← Hono middleware
-    rate-limit.ts  ← 60 req/min per IP, sliding window
-  scrapers/        ← Per-source fetchers (34 sources)
-    index.ts       ← Declarative registry, dedup, 50k cap
+  types.ts           ← ProxyRow, ProxyResponse, enums, SitePassKey
+  config.ts          ← Typed config with env overrides (scraper, validator, etc.)
+  pipeline.ts        ← CLI entry: single-runner pipeline (npm run pipeline)
+  pipeline-scrape.ts ← CLI entry: phase 1 scrape (npm run pipeline:scrape)
+  pipeline-validate.ts ← CLI entry: phase 2 shard validation (npm run pipeline:validate)
+  pipeline-merge.ts  ← CLI entry: phase 3 merge results (npm run pipeline:merge)
+  test-proxies.ts    ← CLI: test proxies from a file
+  models/            ← SQLite DAL (proxy.ts — upsert, query, blacklist, stats)
+  services/          ← Business logic
+    validator.ts     ← withHardTimeout, validateProxy, validateAll, site-pass checks
+    pipeline.ts      ← runPipeline orchestrator (single-runner mode)
+    exporter.ts      ← File export + README stats + changelog
+    stream-export.ts ← Real-time append to text files during validation
+    geolocator.ts    ← MaxMind GeoLite2-Country + GeoLite2-ASN lookups
+    optout.ts        ← POST /optout endpoint + scan-exclude.txt writer
+  middleware/        ← Hono middleware
+    rate-limit.ts    ← 60 req/min per IP, sliding window
+  scrapers/          ← Per-source fetchers (34 sources)
+    index.ts         ← Declarative registry, dedup, per-source cap
     proxyscrape.ts   geonode.ts         thespeedx.ts
     proxifly.ts      monosans.ts        clarketm.ts
     hookzof.ts       fate0.ts           sunny9577.ts
@@ -130,10 +136,11 @@ src/
     zevtyardt.ts     fyvri.ts           vmheaven.ts
     vanndev.ts       roosterkid.ts      freeproxylist.ts
     shodan.ts        censys.ts
-    scanner/       ← Active port-scanner (tcp-probe.ts, fingerprint.ts, etc.)
-  routes/          ← Hono HTTP handlers (no raw SQL)
-  utils/           ← Shared utilities (logger, db connection)
-  index.ts         ← Entry point (Hono server)
+    scanner/         ← Active port-scanner (tcp-probe.ts, fingerprint.ts, etc.)
+  routes/            ← Hono HTTP handlers (no raw SQL)
+  utils/             ← Shared utilities (logger, db connection)
+  index.ts           ← Entry point (Hono server)
+  tendril/           ← P2P distributed validation subsystem
 ```
 
 ## Migration Conventions

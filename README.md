@@ -1,103 +1,108 @@
 # Worldpool
 
 <!-- BADGES_START -->
+
 ![Alive](https://img.shields.io/badge/alive-951-brightgreen)
 ![Google Pass](https://img.shields.io/badge/google--pass-366-blue)
 ![Hijacked Blocked](https://img.shields.io/badge/hijacked--blocked-4504-red)
 ![Avg Latency](https://img.shields.io/badge/avg--latency-2882ms-yellow)
 ![Reliability](https://img.shields.io/badge/reliability-3.8%25-purple)
 ![Updated](https://img.shields.io/badge/updated-2026--04--06-lightgrey)
+
 <!-- BADGES_END -->
 
 **Global proxy pool. Self-maintaining, free, open.**
 
-Worldpool aggregates proxies from 34 sources, validates every one for liveness, anonymity, latency, hijack detection, and site-specific reachability (Google, Discord, TikTok, Instagram, X, Reddit), then exports curated lists and serves them via a REST API. Runs hourly on GitHub Actions.
+Worldpool aggregates proxies from 34 sources, validates every one for liveness, anonymity, latency, hijack detection, and site-specific reachability (Google, Discord, TikTok, Instagram, X, Reddit), then exports curated lists and serves them via a REST API. Runs every 20 minutes on GitHub Actions using 12 parallel validation runners.
 
 ---
 
 ## Pipeline
 
 ```
-SCRAPE ───── 34 sources in parallel (5k cap per source)
-  │
-DEDUP ────── normalize host:port, first-seen wins
-  │
-BLACKLIST ── skip proxies confirmed dead within last 3 hours (DB cached across runs)
-  │
-VALIDATE ─── alive, anonymity, latency, hijack detection, site-pass checks
-  │            results stream to text files in real-time
-  ├── [optional] TENDRIL ── P2P distributed validation from multiple regions
-  │
-STORE ────── SQLite upsert, reliability tracking over time
-  │
-EXPORT ───── text files by protocol/speed/site/anonymity, JSON, stats
+SCRAPE (1 runner, ~15s)
+  34 sources → deduplicate → blacklist recently-dead proxies
+    │
+    ├── SHARD 0  ──┐
+    ├── SHARD 1    │
+    ├── SHARD 2    │
+    ├── SHARD 3    │
+    ├── SHARD 4    │  12 runners validate in parallel
+    ├── SHARD 5    │  alive + anonymity + latency + hijack detect
+    ├── SHARD 6    │  + Google + Discord + TikTok + IG + X + Reddit
+    ├── SHARD 7    │  results stream to text files in real-time
+    ├── SHARD 8    │
+    ├── SHARD 9    │
+    ├── SHARD 10   │
+    └── SHARD 11 ──┘
+    │
+MERGE (1 runner, ~15s)
+  combine shards → store to DB → export files → update README → commit
 ```
 
-First run validates all scraped proxies (~20k). Subsequent runs skip recently-dead proxies and only validate new + previously-alive ones (~3-5k), completing in ~15-20 minutes instead of hours.
+**Cold start:** ~20-25 min. **Warm (blacklist active):** ~10 min. **Every 20 minutes. $0 cost (public repo).**
 
 ---
 
-## Sources
+## Sources (34)
 
-34 sources running in parallel. Each source failing doesn't block the others. Per-source cap of 50k proxies to prevent memory issues.
-
-| Source | Type | Proxies | Update Freq |
-|--------|------|---------|-------------|
-| ErcinDedeoglu/proxies | GitHub | ~37k | Hourly |
-| vmheaven/VMHeaven | GitHub | ~19k | Every 15 min |
-| zevtyardt/proxy-list | GitHub | ~15k | Daily |
-| r00tee/Proxy-List | GitHub | ~10k | Every 5 min |
-| TheSpeedX/PROXY-List | GitHub | ~8k | Hourly |
-| ProxyScraper/ProxyScraper | GitHub | ~8k | Every 30 min |
-| dinoz0rg/proxy-list | GitHub | ~5k (checked) | Every 2 hours |
-| jetkai/proxy-list | GitHub | ~4k | Hourly |
-| Proxifly | GitHub | ~3k | Every 5 min |
-| iplocate/free-proxy-list | GitHub | ~2.5k | Every 30 min |
-| sunny9577/proxy-scraper | GitHub | ~2.2k | Frequent |
-| mmpx12/proxy-list | GitHub | ~1.5k | Hourly |
-| Vann-Dev/proxy-list | GitHub | ~1.5k | Site-checked |
-| zloi-user/hideip.me | GitHub | ~1.3k | Every 10 min |
-| Databay | API | ~1k | Every 10 min |
-| free-proxy-list.net (4 sites) | HTML | ~900 | Every 10 min |
-| ProxyScrape | API | ~900 | Real-time |
-| ClearProxy/checked-proxy-list | GitHub | ~800 | Every 5 min |
-| spys.me | Web | ~800 | Hourly |
-| vakhov/fresh-proxy-list | GitHub | ~700 | Every 5-20 min |
-| Geonode | API | ~500 | Every 5 min |
-| clarketm/proxy-list | GitHub | ~400 | Curated |
-| fyvri/fresh-proxy-list | GitHub | ~300+ | Hourly |
-| MuRongPIG/Proxy-Master | GitHub | ~300+ | Frequent |
-| casa-ls/proxy-list | GitHub | ~300+ | Every 5 min |
-| Fate0/proxylist | GitHub | ~250 | JSONL |
-| roosterkid/openproxylist | GitHub | ~230 | Hourly |
-| Monosans | GitHub | ~200 | Hourly |
-| prxchk/proxy-list | GitHub | ~100 | Every 10 min |
-| Hookzof/socks5_list | GitHub | ~90 | SOCKS5 only |
-| Shodan | API | Varies | Requires API key |
-| Censys | API | Varies | Requires API key |
-| Scanner | Active probe | Varies | Disabled by default |
+| Source | Est. Proxies | Update Freq |
+|--------|-------------|-------------|
+| ErcinDedeoglu/proxies | ~37k | Hourly |
+| vmheaven/VMHeaven | ~19k | Every 15 min |
+| zevtyardt/proxy-list | ~15k | Daily |
+| r00tee/Proxy-List | ~10k | Every 5 min |
+| TheSpeedX/PROXY-List | ~8k | Hourly |
+| ProxyScraper/ProxyScraper | ~8k | Every 30 min |
+| dinoz0rg/proxy-list | ~5k (checked) | Every 2 hours |
+| jetkai/proxy-list | ~4k | Hourly |
+| Proxifly | ~3k | Every 5 min |
+| iplocate/free-proxy-list | ~2.5k | Every 30 min |
+| sunny9577 | ~2.2k | Frequent |
+| mmpx12/proxy-list | ~1.5k | Hourly |
+| Vann-Dev/proxy-list | ~1.5k | Site-checked |
+| zloi-user/hideip.me | ~1.3k | Every 10 min |
+| Databay API | ~1k | Every 10 min |
+| free-proxy-list.net (4 sites) | ~900 | Every 10 min |
+| ProxyScrape API | ~900 | Real-time |
+| ClearProxy | ~800 | Every 5 min |
+| spys.me | ~800 | Hourly |
+| vakhov | ~700 | Every 5-20 min |
+| Geonode API | ~500 | Every 5 min |
+| clarketm | ~400 | Curated |
+| fyvri | ~300+ | Hourly |
+| MuRongPIG | ~300+ | Frequent |
+| casa-ls | ~300+ | Every 5 min |
+| Fate0 | ~250 | JSONL |
+| roosterkid | ~230 | Hourly |
+| Monosans | ~200 | Hourly |
+| prxchk | ~100 | Every 10 min |
+| Hookzof | ~90 | SOCKS5 only |
+| Shodan API | Varies | Requires key |
+| Censys API | Varies | Requires key |
+| Scanner | Varies | Disabled by default |
 
 ---
 
 ## Validation
 
-Every proxy goes through these checks:
+Every proxy gets a 30-second hard timeout and these checks:
 
 | Check | What it does |
 |-------|-------------|
 | **Alive** | HTTP request through proxy to judge server or httpbin.org |
-| **Anonymity** | Classifies as elite, anonymous, or transparent based on leaked headers |
+| **Anonymity** | Classifies as elite, anonymous, or transparent |
 | **Latency** | Round-trip time in milliseconds |
 | **Google Pass** | Can the proxy reach `google.com/generate_204`? |
-| **Hijack Detection** | Detects ad injection, redirects, captive portals, content substitution, SSL stripping |
-| **Site Pass** | Tests reachability to Discord, TikTok, Instagram, X/Twitter, Reddit |
-| **Geolocation** | Country + ASN via MaxMind GeoLite2 or free API fallback |
+| **Hijack Detection** | 5 types: ad injection, redirect, captive portal, content substitution, SSL strip |
+| **Site Pass** | Tests Discord, TikTok, Instagram, X/Twitter, Reddit reachability |
+| **Geolocation** | Country + ASN via MaxMind GeoLite2 or free API |
 
 ---
 
 ## Proxy Files
 
-Updated automatically every hour.
+Updated every 20 minutes via GitHub Actions.
 
 ### By Protocol
 | File | Description |
@@ -137,14 +142,14 @@ Updated automatically every hour.
 | File | Description |
 |------|-------------|
 | [`proxies/hijacked.txt`](proxies/hijacked.txt) | Hijacked proxy IPs |
-| [`proxies/hijacked.json`](proxies/hijacked.json) | Full hijack details |
+| [`proxies/hijacked.json`](proxies/hijacked.json) | Full hijack details with classification |
 | [`proxies/malicious-asn.txt`](proxies/malicious-asn.txt) | ASNs ranked by hijacked count |
 
 ### Structured Data
 | File | Description |
 |------|-------------|
 | [`data/proxies.json`](data/proxies.json) | Full proxy list with all metadata |
-| [`data/stats.json`](data/stats.json) | Pool health snapshot with source quality |
+| [`data/stats.json`](data/stats.json) | Pool health with source quality metrics |
 
 ---
 
@@ -154,26 +159,28 @@ REST API on port 3000. Rate limited to 60 req/min per IP.
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/proxies` | GET | Filtered proxy list. Params: `protocol`, `anonymity`, `google_pass`, `max_latency_ms`, `limit`, `offset`, `format` (json/txt) |
+| `/proxies` | GET | Filtered proxy list. Params: `protocol`, `anonymity`, `google_pass`, `max_latency_ms`, `limit`, `offset`, `format` |
 | `/proxies/random` | GET | Single random proxy. Same filters |
 | `/stats` | GET | Pool health and protocol breakdown |
-| `/refresh` | POST | Trigger pipeline run. Requires `X-Admin-Token`. 10-min timeout |
-| `/optout` | POST | Exclude IP/CIDR from scanner. Body: `{"ip":"1.2.3.4"}` or `{"cidr":"1.2.3.0/24"}` |
+| `/refresh` | POST | Trigger pipeline. Requires `X-Admin-Token`. 10-min timeout |
+| `/optout` | POST | Exclude IP/CIDR from scanner |
 
 ---
 
 ## Pool Statistics
 
 <!-- STATS_START -->
-| Metric | Value |
-| --- | --- |
-| Total proxies | 25084 |
-| Alive proxies | 951 |
-| Elite proxies | 951 |
-| Google pass | 366 |
-| Hijacked | 4504 |
-| Avg latency | 2882 ms |
-| Last updated | 2026-04-06T12:11:33.000Z |
+
+| Metric        | Value                    |
+| ------------- | ------------------------ |
+| Total proxies | 25084                    |
+| Alive proxies | 951                      |
+| Elite proxies | 951                      |
+| Google pass   | 366                      |
+| Hijacked      | 4504                     |
+| Avg latency   | 2882 ms                  |
+| Last updated  | 2026-04-06T12:11:33.000Z |
+
 <!-- STATS_END -->
 
 ---
@@ -182,9 +189,12 @@ REST API on port 3000. Rate limited to 60 req/min per IP.
 
 ```bash
 npm install
-npm run pipeline    # run the pipeline once
-npm run dev         # start the API server
-npm start           # pipeline + API
+npm run pipeline           # full pipeline (single runner)
+npm run pipeline:scrape    # phase 1: scrape only
+npm run pipeline:validate  # phase 2: validate a shard
+npm run pipeline:merge     # phase 3: merge results
+npm run dev                # API server
+npm start                  # pipeline + API
 ```
 
 ### Test Proxies
@@ -199,32 +209,44 @@ npx tsx src/test-proxies.ts 10 proxies/by-speed/fast.txt
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `VALIDATOR_CONCURRENCY` | `100` | Parallel validation connections (CI uses 200) |
-| `VALIDATOR_TIMEOUT_MS` | `5000` | Per-proxy timeout |
-| `MAX_PER_SOURCE` | `5000` | Cap proxies per source to prevent memory issues |
-| `BLACKLIST_WINDOW_SEC` | `10800` | Skip dead proxies checked within this window (3h) |
+| `VALIDATOR_CONCURRENCY` | `100` | Parallel connections (CI uses 200) |
+| `VALIDATOR_TIMEOUT_MS` | `5000` | Per-proxy axios timeout |
+| `MAX_PER_SOURCE` | `50000` | Cap proxies per source |
+| `BLACKLIST_WINDOW_SEC` | `10800` | Skip dead proxies checked within 3h |
 | `SKIP_GOOGLE_PASS` | `false` | Skip Google 204 check |
 | `SKIP_SITE_PASS` | `false` | Skip Discord/TikTok/IG/X/Reddit checks |
-| `JUDGE_URL` | `localhost:3001/judge` | Judge server for anonymity detection |
+| `JUDGE_URL` | `localhost:3001/judge` | Judge server for anonymity |
 | `JUDGE_TOKEN` | `dev-token` | Judge server auth |
 | `MAXMIND_LICENSE_KEY` | — | Enables offline geolocation |
 | `SHODAN_API_KEY` | — | Enables Shodan source |
 | `CENSYS_API_ID` / `SECRET` | — | Enables Censys source |
 | `SCANNER_ENABLED` | `false` | Enable active port scanner |
 | `TENDRIL_ENABLED` | `false` | Enable P2P distributed validation |
-| `TENDRIL_REGION` | `XX` | ISO country code for this node |
 
 ---
 
-## Tendril: Distributed Validation
+## Architecture
 
-Optional P2P layer. Nodes validate proxies from their own region via Hyperswarm DHT, producing geo-scoped availability data nobody else publishes.
+### Parallel Validation (GitHub Actions)
 
-```bash
-TENDRIL_ENABLED=true TENDRIL_REGION=PH npm run pipeline
-```
+3-phase pipeline across 14 runners:
 
-Auth headers blocked on public topic. Use private topics for authenticated scraping.
+1. **Scrape** (1 runner, ~15s) — 34 sources, dedup, blacklist, upload artifact
+2. **Validate** (12 runners in parallel, ~5-20 min) — each shard validates a slice at 200 concurrency with 30s hard timeout, streams to text files, uploads artifact
+3. **Merge** (1 runner, ~15s) — combine shards, store to SQLite, export, commit
+
+### Blacklist
+
+SQLite DB cached between runs. Dead proxies from the last 3 hours are skipped. First run validates everything; subsequent runs skip ~80% of dead proxies.
+
+### Safety
+
+- 30s hard timeout per proxy (no hung connections)
+- 150 min global validation deadline
+- `fail-fast: false` on matrix (one shard failing doesn't kill others)
+- `save-always: true` on DB cache (saves even on timeout/cancel)
+- `if: always()` on commit and merge (partial results still saved)
+- Concurrency group prevents overlapping runs
 
 ---
 
@@ -237,7 +259,7 @@ Auth headers blocked on public topic. Use private topics for authenticated scrap
 | Database | SQLite (better-sqlite3, WAL) |
 | P2P | Hyperswarm + CRDTs |
 | Geolocation | MaxMind GeoLite2 |
-| CI/CD | GitHub Actions (hourly, cached) |
+| CI/CD | GitHub Actions (12 shards, every 20 min, $0) |
 
 ---
 
@@ -246,7 +268,9 @@ Auth headers blocked on public topic. Use private topics for authenticated scrap
 See [docs/SECURITY.md](docs/SECURITY.md) for the full threat model.
 
 - Hijack detection (5 categories) blocks tampered proxies
-- Rate limiting on all API endpoints
+- Site-pass checks verify platform reachability
+- Rate limiting on all API endpoints (60 req/min)
+- 30s hard timeout prevents hung connections
 - Judge server token auth
 - Opt-out system for IP operators
 - Free proxies are untrusted — never route credentials through them

@@ -73,13 +73,14 @@ Flagged proxies are exported to:
 
 ### 6. Resource Exhaustion / OOM — LOW with limits
 
-**Risk:** 100-150 concurrent outbound connections with 5s timeouts = hundreds of half-open sockets at peak. On a 1GB VPS, this can OOM.
+**Risk:** 200 concurrent outbound connections with 5s timeouts = hundreds of half-open sockets at peak. On a 1GB VPS, this can OOM. On GitHub Actions (7GB RAM), this is fine.
 
 **Mitigation:**
-- Hard concurrency cap at 100 via `p-limit`
+- Hard concurrency cap at 200 via `p-limit` (configurable via `VALIDATOR_CONCURRENCY`)
+- 30-second hard timeout per proxy via `withHardTimeout()` — kills hung sockets unconditionally
+- 150-minute global validation deadline via `Promise.race()` — returns partial results
 - Circuit breaker: if memory usage exceeds 80%, pause validation
-- Connection timeout set to 8s (not infinite)
-- Use `AbortController` to enforce timeouts at the HTTP level
+- Parallel sharding across 12 runners — each handles ~2-7k proxies, not the full pool
 
 ## What's NOT a Threat
 
@@ -96,7 +97,7 @@ Flagged proxies are exported to:
 2. **No auth through free proxies:** Never route cookies, tokens, API keys, or login flows through the pool
 3. **Throwaway nodes:** Treat the validator VPS as disposable — if flagged, destroy and recreate
 4. **Monitor:** Watch for unusual inbound traffic patterns that might indicate a honeypot probing back
-5. **GitHub Actions preferred:** Running the pipeline in Actions uses Microsoft Azure runner IPs, not your own infrastructure
+5. **GitHub Actions preferred:** Running the pipeline in Actions uses Microsoft Azure runner IPs (12 different IPs per run), not your own infrastructure
 6. **Respect opt-outs:** IP operators may request exclusion from the scanner via `POST /optout`; entries are stored in `data/scan-exclude.txt` and must be honoured by the scanner on every run
 
 ## Security Checklist for Contributors

@@ -2,55 +2,52 @@
 
 ## Pipeline
 
-6-stage pipeline, hourly via GitHub Actions. SQLite DB cached between runs.
+3-phase parallel pipeline, every 20 minutes via GitHub Actions. 14 runners total.
 
 ```
-SCRAPE ──▶ DEDUP ──▶ BLACKLIST ──▶ VALIDATE ──▶ STORE ──▶ EXPORT
-34 sources   host:port   skip dead      judge/httpbin   SQLite    txt/json
-in parallel  normalize   proxies from   anonymity       upsert    per-site
-(5k cap)     first wins  last 3 hours   hijack detect   uptime    stats
-                                        stream to txt             README
+SCRAPE (1 runner, ~15s)
+  34 sources in parallel → dedup → blacklist dead proxies from DB
+      │
+      ├── SHARD 0 ──┐
+      ├── SHARD 1   │
+      ├── ...       │  12 runners validate in parallel
+      └── SHARD 11──┘  200 concurrency each, 30s hard timeout per proxy
+      │
+MERGE (1 runner, ~15s)
+  combine 12 shard artifacts → SQLite upsert → export files → commit
 ```
 
-## Stage 1: Scrape
+## Phase 1: Scrape
 
-34 sources run in parallel via `Promise.allSettled()`. Each source has its own module in `src/scrapers/`. Per-source cap configurable via `MAX_PER_SOURCE` (default 5k).
+Entry point: `npm run pipeline:scrape` (`src/pipeline-scrape.ts`)
+
+34 sources run in parallel via `Promise.allSettled()`. Per-source cap configurable via `MAX_PER_SOURCE` (default 50k). Results deduplicated by `host:port`, then filtered against the blacklist (dead proxies from last 3 hours). Output uploaded as GitHub Actions artifact.
 
 **Source types:**
-- **REST APIs (5):** ProxyScrape, Geonode, Databay, Shodan, Censys
-- **GitHub raw text (26):** ErcinDedeoglu (~37k), vmheaven (~19k), zevtyardt (~15k), r00tee (~10k), TheSpeedX (~8k), ProxyScraper-GH (~8k), dinoz0rg (~5k checked), jetkai (~4k), Proxifly (~3k), iplocate (~2.5k), sunny9577 (~2.2k), mmpx12 (~1.5k), Vann-Dev (~1.5k), zloi (~1.3k), ClearProxy (~800), spys.me (~800), vakhov (~700), Geonode (~500), clarketm (~400), fyvri (~300+), MuRongPIG (~300+), casa (~300+), fate0 (~250), roosterkid (~230), monosans (~200), prxchk (~100), hookzof (~90)
-- **HTML scraping (1):** free-proxy-list.net family (4 sites, regex extraction)
-- **Active probing (1):** Scanner (TCP port probe + fingerprinting, disabled by default)
+- **REST APIs (5):** ProxyScrape, Geonode, Databay, Shodan (key required), Censys (key required)
+- **GitHub raw text (26):** ErcinDedeoglu (~37k), vmheaven (~19k), zevtyardt (~15k), r00tee (~10k), TheSpeedX (~8k), ProxyScraper-GH (~8k), dinoz0rg (~5k checked), jetkai (~4k), Proxifly (~3k), iplocate (~2.5k), sunny9577 (~2.2k), mmpx12 (~1.5k), Vann-Dev (~1.5k), zloi (~1.3k), ClearProxy (~800), spys.me (~800), vakhov (~700), clarketm (~400), fyvri (~300+), MuRongPIG (~300+), casa (~300+), fate0 (~250), roosterkid (~230), monosans (~200), prxchk (~100), hookzof (~90)
+- **HTML scraping (1):** free-proxy-list.net family (4 sites, regex IP:port extraction)
+- **Active probing (1):** Scanner (TCP probe + fingerprinting, disabled by default)
 
 **Fetcher contract:** `export async function scrape(): Promise<RawProxy[]>`
 
-Sources are registered in a declarative array in `src/scrapers/index.ts`:
-```typescript
-const scrapers = [
-  { name: 'proxyscrape', fn: proxyscrape },
-  { name: 'ercin', fn: ercin },
-  // ... 32 more
-];
-```
+Registered in a declarative array in `src/scrapers/index.ts`.
 
-## Stage 2: Deduplicate
+## Blacklist
 
-Normalize host to lowercase, key by `host:port`, first-seen wins.
+Queries SQLite DB (cached between Actions runs) for proxies where `alive = 0` and `last_checked` within the last 3 hours (`BLACKLIST_WINDOW_SEC`). Filters them out before validation.
 
-## Stage 2.5: Blacklist
+- **Cold start:** No DB cache, validates everything
+- **Warm runs:** Skips ~80% of dead proxies, only validates new + previously-alive
+- **3-hour window:** Dead proxies eventually become eligible for retry
 
-Queries the SQLite DB for proxies that were confirmed dead within the last 3 hours (configurable via `BLACKLIST_WINDOW_SEC`). These are filtered out before validation — no point re-checking a proxy that was dead 1 hour ago.
+## Phase 2: Validate (12 shards)
 
-- **Run 1 (cold):** No DB, validates everything (~20k proxies)
-- **Run 2+ (warm):** Skips ~80% of scraped proxies, validates ~3-5k in ~15-20 min
-- **After 3 hours:** Dead proxies become eligible for retry (they might have come back)
-- DB is cached between GitHub Actions runs via `actions/cache`
+Entry point: `npm run pipeline:validate` (`src/pipeline-validate.ts`)
 
-## Stage 3: Validate
+Downloads the proxy list artifact, takes its slice (shard N of 12), validates each proxy.
 
-Concurrent validation via `p-limit` (default 100, CI uses 200). Results stream to text files in real-time via `onResult` callback — proxy files populate progressively during validation, not just at the end.
-
-**Checks per proxy:**
+**Per-proxy checks:**
 
 | Check | Endpoint | Pass |
 |-------|----------|------|
@@ -58,7 +55,7 @@ Concurrent validation via `p-limit` (default 100, CI uses 200). Results stream t
 | Anonymity | Judge echoed headers | elite/anonymous/transparent |
 | Latency | `Date.now()` delta | Recorded in ms |
 | Google Pass | google.com/generate_204 | HTTP 204 |
-| Hijack (5 types) | httpbin.org/get | Response matches expected structure |
+| Hijack (5 types) | httpbin.org/get | Response structure intact |
 | Discord | discord.com/api/v10/gateway | HTTP 200 |
 | TikTok | tiktok.com/robots.txt | HTTP 2xx/3xx |
 | Instagram | instagram.com/robots.txt | HTTP 2xx/3xx |
@@ -66,20 +63,23 @@ Concurrent validation via `p-limit` (default 100, CI uses 200). Results stream t
 | Reddit | reddit.com/robots.txt | HTTP 2xx/3xx |
 | Geolocation | MaxMind GeoLite2 or free API | Country + ASN |
 
-**Hijack categories:** ad_injection, redirect, captive_portal, content_substitution, ssl_strip
+**Safety mechanisms:**
+- 30s hard timeout per proxy via `withHardTimeout()` — kills hung sockets unconditionally
+- 150 min global deadline via `Promise.race()` — returns partial results if hit
+- 200 concurrent connections via `p-limit`
+- Results stream to text files in real-time via `onResult` callback
 
-## Stage 4: Store
+Each shard uploads its validated results as a GitHub Actions artifact.
 
-SQLite with WAL mode. Upsert by `proxy_id` (`host:port`).
+## Phase 3: Merge
 
-- `check_count` / `alive_count` tracked over time
-- `reliability_pct` = alive_count / check_count * 100
-- `site_pass` stored as JSON column
+Entry point: `npm run pipeline:merge` (`src/pipeline-merge.ts`)
 
-## Stage 5: Export
+Downloads all 12 shard artifacts, merges, filters invalid entries (bad ports), stores to SQLite via upsert, runs full export, commits to repo.
 
-- `proxies/` — flat text by protocol, speed, anonymity, site
-- `proxies/by-site/` — per-platform proxy lists (google, discord, tiktok, instagram, x, reddit)
+**Export outputs:**
+- `proxies/` — flat text by protocol, speed tier, anonymity, site
+- `proxies/by-site/` — per-platform lists (google, discord, tiktok, instagram, x, reddit)
 - `proxies/hijacked.*` + `malicious-asn.txt` — threat intel
 - `data/proxies.json` + `data/stats.json` — structured data
 - README stats + badges auto-updated
@@ -87,20 +87,29 @@ SQLite with WAL mode. Upsert by `proxy_id` (`host:port`).
 
 ## Deployment
 
-**GitHub Actions (primary):** Hourly cron, 90-min timeout, 200 concurrency. Two caches persist between runs:
-- `worldpool.db` — proxy database (enables blacklist, reliability tracking)
-- `data/*.mmdb` — GeoLite2 databases (avoids re-downloading every hour)
+### GitHub Actions (Primary)
 
-GeoLite2 download step is non-fatal (free API fallback). Site-pass checks disabled in CI for speed (`SKIP_SITE_PASS=true`).
+Every 20 minutes, 14 runners, $0 cost (public repo).
 
-**Local/VPS (optional):** `npm start` for API + background pipeline.
+**Caches persisted between runs:**
+- `worldpool.db` — proxy database (blacklist, reliability tracking) — `save-always: true`
+- `data/*.mmdb` — GeoLite2 databases — `save-always: true`
+
+**Safety:**
+- `concurrency` group prevents overlapping runs
+- `fail-fast: false` on validation matrix
+- `if: always()` on merge job (runs even if some shards fail)
+- GeoLite2 download is non-fatal (free API fallback)
+
+### Local / VPS (Optional)
+
+`npm run pipeline` runs the original single-runner pipeline.
+`npm start` starts API server + background pipeline.
 
 ## Tendril: Distributed Validation
 
-Optional P2P layer via Hyperswarm. Nodes validate from their own region, storing results in `regional_validation` table.
+Optional P2P layer via Hyperswarm (`TENDRIL_ENABLED=true`). Nodes validate from their own region, storing results in `regional_validation` table. Uses Vector Clocks for job causality and PN-Counters for completion tracking. Public topic blocks auth headers.
 
-- Vector Clocks for job causality
-- PN-Counters for completion tracking
-- Public topic blocks auth headers (credential safety)
+## Threat Model
 
-See [SECURITY.md](SECURITY.md) for threat model.
+See [SECURITY.md](SECURITY.md).
