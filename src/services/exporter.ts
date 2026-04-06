@@ -11,6 +11,7 @@ import {
   queryProxyByLatencyRange,
   getSourceQuality,
   queryBySitePass,
+  queryAllEverSeen,
 } from '../models/proxy.js';
 import type { ProxyResponse, HijackedProxyResponse, PoolStatsResponse } from '../types.js';
 import { config } from '../config.js';
@@ -157,6 +158,9 @@ export async function exportFiles(): Promise<void> {
   const siteNames = ['google', 'discord', 'tiktok', 'instagram', 'x', 'reddit'] as const;
   const bySite = Object.fromEntries(siteNames.map(s => [s, queryBySitePass(s)]));
 
+  // All ever seen — cumulative list of every proxy that's ever been in the DB
+  const allEverSeen = queryAllEverSeen();
+
   // Query hijacked proxies for threat-intel output
   const hijacked = queryHijacked();
 
@@ -167,6 +171,7 @@ export async function exportFiles(): Promise<void> {
   await Promise.all([
     // Existing flat files (backwards-compatible)
     writeFile(join(proxiesDir, 'all.txt'), toLines(all)),
+    writeFile(join(proxiesDir, 'all-ever-seen.txt'), toLines(allEverSeen)),
     writeFile(join(proxiesDir, 'http.txt'), toLines(http)),
     writeFile(join(proxiesDir, 'socks4.txt'), toLines(socks4)),
     writeFile(join(proxiesDir, 'socks5.txt'), toLines(socks5)),

@@ -341,6 +341,18 @@ export function getRecentlyDeadProxyIds(withinSec: number): Set<string> {
   return new Set(rows.map(r => r.proxy_id));
 }
 
+/**
+ * Return ALL proxies ever stored in the database — alive, dead, hijacked, everything.
+ * Used for the cumulative all-ever-seen.txt export.
+ */
+export function queryAllEverSeen(): ProxyResponse[] {
+  const db = getDb();
+  const rows = db
+    .prepare(`SELECT * FROM proxy ORDER BY last_checked DESC`)
+    .all() as ProxyRow[];
+  return rows.map(rowToResponse);
+}
+
 export function getSourceQuality(): SourceQuality[] {
   const db = getDb();
 
