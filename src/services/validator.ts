@@ -407,7 +407,20 @@ export async function validateAll(
       })
     );
 
-    await Promise.all(tasks);
+    // Race all tasks against a global deadline — don't let a few hanging proxies block forever
+    const GLOBAL_TIMEOUT_MS = 150 * 60 * 1000; // 150 minutes max for entire validation
+    const deadline = new Promise<void>((resolve) => {
+      setTimeout(() => {
+        log.warn(`Global validation deadline reached (${GLOBAL_TIMEOUT_MS / 60000} min) — returning ${results.length} results`, {
+          completed,
+          total: proxies.length,
+          alive: aliveCount,
+        });
+        resolve();
+      }, GLOBAL_TIMEOUT_MS);
+    });
+
+    await Promise.race([Promise.all(tasks), deadline]);
   } finally {
     clearInterval(heartbeat);
   }
