@@ -30,8 +30,13 @@ async function main() {
       continue;
     }
     const shardResults: ValidatedProxy[] = JSON.parse(readFileSync(path, 'utf-8'));
-    log.info(`Shard ${i}: ${shardResults.length} results (${shardResults.filter(p => p.alive).length} alive)`);
-    for (const proxy of shardResults) {
+    // Filter out invalid entries (bad port, missing host)
+    const valid = shardResults.filter(p => p.host && p.port >= 1 && p.port <= 65535);
+    if (valid.length < shardResults.length) {
+      log.warn(`Shard ${i}: filtered ${shardResults.length - valid.length} invalid entries`);
+    }
+    log.info(`Shard ${i}: ${valid.length} results (${valid.filter(p => p.alive).length} alive)`);
+    for (const proxy of valid) {
       allValidated.push(proxy);
     }
   }
