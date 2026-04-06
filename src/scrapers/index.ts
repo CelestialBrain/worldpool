@@ -35,6 +35,8 @@ import { scrape as vmheaven } from './vmheaven.js';
 import { scrape as vanndev } from './vanndev.js';
 import { scrape as roosterkid } from './roosterkid.js';
 import { scrape as freeproxylist } from './freeproxylist.js';
+import { scrape as bulkGithub } from './bulk-github.js';
+import { scrape as acidvegas } from './acidvegas.js';
 import type { RawProxy } from '../types.js';
 import { config } from '../config.js';
 import { createLogger } from '../utils/logger.js';
@@ -75,6 +77,8 @@ const scrapers = [
   { name: 'vanndev', fn: vanndev },
   { name: 'roosterkid', fn: roosterkid },
   { name: 'freeproxylist', fn: freeproxylist },
+  { name: 'bulk-github', fn: bulkGithub },
+  { name: 'acidvegas', fn: acidvegas },
 ];
 
 export async function scrapeAll(): Promise<RawProxy[]> {
