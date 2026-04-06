@@ -5,6 +5,10 @@ on:
     - cron: '0 * * * *'        # every hour (unlimited for public repos)
   workflow_dispatch:          # manual trigger from GitHub UI
 
+concurrency:
+  group: proxy-pool-update
+  cancel-in-progress: false   # let the current run finish, skip new ones
+
 permissions:
   contents: write             # needed to commit proxy files back to repo
 
