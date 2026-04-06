@@ -7,36 +7,27 @@ on:
 
 concurrency:
   group: proxy-pool-update
-  cancel-in-progress: false   # let the current run finish, skip new ones
+  cancel-in-progress: false
 
 permissions:
-  contents: write             # needed to commit proxy files back to repo
+  contents: write
+
+env:
+  TOTAL_SHARDS: '4'
 
 jobs:
-  update-pool:
+  # ─── Phase 1: Scrape all sources, deduplicate, apply blacklist ───────
+  scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 10
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Cache GeoLite2 databases
-        uses: actions/cache@v4
-        with:
-          path: data/*.mmdb
-          key: geolite2-${{ hashFiles('.github/workflows/scrape.yml') }}
-          restore-keys: geolite2-
-          save-always: true
+      - run: npm ci
 
       - name: Cache proxy database
         uses: actions/cache@v4
@@ -44,6 +35,44 @@ jobs:
           path: worldpool.db
           key: proxydb-${{ github.run_number }}
           restore-keys: proxydb-
+          save-always: true
+
+      - name: Scrape & deduplicate
+        run: npx tsx src/pipeline-scrape.ts
+        env:
+          MAX_PER_SOURCE: '5000'
+          BLACKLIST_WINDOW_SEC: '10800'
+
+      - name: Upload proxy list
+        uses: actions/upload-artifact@v4
+        with:
+          name: proxies-to-validate
+          path: artifacts/proxies-to-validate.json
+          retention-days: 1
+
+  # ─── Phase 2: Validate in parallel across 4 runners ──────────────────
+  validate:
+    needs: scrape
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      matrix:
+        shard: [0, 1, 2, 3]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+
+      - name: Cache GeoLite2 databases
+        uses: actions/cache@v4
+        with:
+          path: data/*.mmdb
+          key: geolite2-${{ hashFiles('.github/workflows/scrape.yml') }}
+          restore-keys: geolite2-
           save-always: true
 
       - name: Download GeoLite2 databases
@@ -72,35 +101,77 @@ jobs:
           MAXMIND_LICENSE_KEY: ${{ secrets.MAXMIND_LICENSE_KEY }}
           MAXMIND_ACCOUNT_ID: ${{ secrets.MAXMIND_ACCOUNT_ID }}
 
-      - name: Run pipeline
-        run: npm run pipeline
+      - name: Download proxy list
+        uses: actions/download-artifact@v4
+        with:
+          name: proxies-to-validate
+          path: artifacts
+
+      - name: Validate shard ${{ matrix.shard }}
+        run: npx tsx src/pipeline-validate.ts
         env:
-          NODE_ENV: production
-          JUDGE_URL: ${{ secrets.JUDGE_URL }}
-          JUDGE_TOKEN: ${{ secrets.JUDGE_TOKEN }}
+          SHARD_INDEX: ${{ matrix.shard }}
+          TOTAL_SHARDS: ${{ env.TOTAL_SHARDS }}
           VALIDATOR_CONCURRENCY: '200'
           VALIDATOR_TIMEOUT_MS: '5000'
-          MAX_PER_SOURCE: '5000'
-          BLACKLIST_WINDOW_SEC: '10800'
           SKIP_GOOGLE_PASS: 'false'
           SKIP_SITE_PASS: 'true'
-          SHODAN_API_KEY: ${{ secrets.SHODAN_API_KEY }}
-          CENSYS_API_ID: ${{ secrets.CENSYS_API_ID }}
-          CENSYS_API_SECRET: ${{ secrets.CENSYS_API_SECRET }}
+          JUDGE_URL: ${{ secrets.JUDGE_URL }}
+          JUDGE_TOKEN: ${{ secrets.JUDGE_TOKEN }}
+
+      - name: Upload shard results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validated-shard-${{ matrix.shard }}
+          path: artifacts/validated-shard-${{ matrix.shard }}.json
+          retention-days: 1
+
+  # ─── Phase 3: Merge results, store to DB, export, commit ─────────────
+  merge:
+    needs: validate
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+
+      - name: Cache proxy database
+        uses: actions/cache@v4
+        with:
+          path: worldpool.db
+          key: proxydb-${{ github.run_number }}
+          restore-keys: proxydb-
+          save-always: true
+
+      - name: Download all shard results
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: validated-shard-*
+          merge-multiple: true
+
+      - name: Merge, store, export
+        run: npx tsx src/pipeline-merge.ts
+        env:
+          TOTAL_SHARDS: ${{ env.TOTAL_SHARDS }}
 
       - name: Commit updated proxy files
-        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           git add proxies/ data/ README.md CHANGELOG.md
 
-          # Only commit if there are changes
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
-            # Generate commit message with stats
             HTTP_COUNT=$(wc -l < proxies/http.txt 2>/dev/null || echo 0)
             SOCKS4_COUNT=$(wc -l < proxies/socks4.txt 2>/dev/null || echo 0)
             SOCKS5_COUNT=$(wc -l < proxies/socks5.txt 2>/dev/null || echo 0)

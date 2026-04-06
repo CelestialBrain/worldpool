@@ -10,6 +10,9 @@
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "pipeline": "tsx src/pipeline.ts",
+    "pipeline:scrape": "tsx src/pipeline-scrape.ts",
+    "pipeline:validate": "tsx src/pipeline-validate.ts",
+    "pipeline:merge": "tsx src/pipeline-merge.ts",
     "build": "tsc",
     "lint": "tsc --noEmit"
   },
