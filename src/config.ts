@@ -19,7 +19,7 @@ export const config = {
 
   // ─── Scraper ─────────────────────────────────────────────────────────
   scraper: {
-    maxPerSource: parseInt(process.env.MAX_PER_SOURCE ?? '50000', 10),
+    maxPerSource: parseInt(process.env.MAX_PER_SOURCE ?? '0', 10), // 0 = no cap
     blacklistWindowSec: parseInt(process.env.BLACKLIST_WINDOW_SEC ?? String(3 * 60 * 60), 10), // 3 hours
   },
 

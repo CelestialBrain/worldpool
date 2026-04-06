@@ -93,7 +93,7 @@ export async function scrapeAll(): Promise<RawProxy[]> {
     const result = results[i];
     if (result.status === 'fulfilled') {
       let proxies = result.value;
-      if (proxies.length > MAX_PER_SOURCE) {
+      if (MAX_PER_SOURCE > 0 && proxies.length > MAX_PER_SOURCE) {
         log.warn(`Source ${scrapers[i].name} returned ${proxies.length} proxies — capping at ${MAX_PER_SOURCE}`);
         proxies = proxies.slice(0, MAX_PER_SOURCE);
       }
