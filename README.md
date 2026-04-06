@@ -11,7 +11,7 @@
 
 **Global proxy pool. Self-maintaining, free, open.**
 
-Worldpool aggregates proxies from 34 sources, validates every one for liveness, anonymity, latency, hijack detection, and site-specific reachability (Google, Discord, TikTok, Instagram, X, Reddit), then exports curated lists and serves them via a REST API. Runs every 20 minutes on GitHub Actions using 12 parallel validation runners.
+Worldpool aggregates proxies from 120+ sources (34 direct scrapers + 14 bulk GitHub repos + 76 meta-source URLs), validates every one for liveness, anonymity, latency, hijack detection, and site-specific reachability (Google, Discord, TikTok, Instagram, X, Reddit), then exports curated lists and serves them via a REST API. Runs every 20 minutes on GitHub Actions using 12 parallel validation runners.
 
 ---
 
@@ -42,7 +42,7 @@ MERGE (1 runner, ~15s)
 
 ---
 
-## Sources (34)
+## Sources (120+)
 
 | Source | Est. Proxies | Update Freq |
 |--------|-------------|-------------|
@@ -80,6 +80,11 @@ MERGE (1 runner, ~15s)
 | Censys API | Varies | Requires key |
 | Scanner | Varies | Disabled by default |
 
+**Bulk GitHub sources (14 repos in single scraper):**
+ebrasha (~10k), Munachukwuw (~13k), gitrecon1455 (~10k), proxygenerator1 (~8k), dpangestuw (~7k), officialputuid (~4k), TuanMinPay (~3k), komutan234 (~3k), Anonym0usWork1221 (~3.6k), openproxyhub (~1.8k), Skiddle-ID (~1.9k), itsanwar (~1k), alphaa1111 (~900), trio666 (~2.1k)
+
+**Meta-source scraper:** Fetches [acidvegas/proxytools](https://github.com/acidvegas/proxytools) proxy_sources.txt — 76 curated API endpoints and raw URLs, scraped in parallel.
+
 ---
 
 ## Validation
@@ -106,6 +111,7 @@ Updated every 20 minutes via GitHub Actions.
 | File | Description |
 |------|-------------|
 | [`proxies/all.txt`](proxies/all.txt) | All alive proxies |
+| [`proxies/all-ever-seen.txt`](proxies/all-ever-seen.txt) | Every proxy ever discovered (cumulative, 71k+) |
 | [`proxies/http.txt`](proxies/http.txt) | HTTP proxies |
 | [`proxies/socks4.txt`](proxies/socks4.txt) | SOCKS4 proxies |
 | [`proxies/socks5.txt`](proxies/socks5.txt) | SOCKS5 proxies |

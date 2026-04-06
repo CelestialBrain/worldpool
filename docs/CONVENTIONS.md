@@ -135,6 +135,7 @@ src/
     clearproxy.ts    dinoz0rg.ts        proxyscraper-gh.ts
     zevtyardt.ts     fyvri.ts           vmheaven.ts
     vanndev.ts       roosterkid.ts      freeproxylist.ts
+    bulk-github.ts   acidvegas.ts
     shodan.ts        censys.ts
     scanner/         ← Active port-scanner (tcp-probe.ts, fingerprint.ts, etc.)
   routes/            ← Hono HTTP handlers (no raw SQL)

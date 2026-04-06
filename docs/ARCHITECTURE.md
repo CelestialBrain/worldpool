@@ -21,11 +21,13 @@ MERGE (1 runner, ~15s)
 
 Entry point: `npm run pipeline:scrape` (`src/pipeline-scrape.ts`)
 
-34 sources run in parallel via `Promise.allSettled()`. Per-source cap configurable via `MAX_PER_SOURCE` (default 50k). Results deduplicated by `host:port`, then filtered against the blacklist (dead proxies from last 3 hours). Output uploaded as GitHub Actions artifact.
+120+ sources run in parallel via `Promise.allSettled()`. Per-source cap configurable via `MAX_PER_SOURCE` (default 50k). Results deduplicated by `host:port`, then previously-alive proxies from the DB are injected (ensures they get re-validated even if they dropped off source lists), then filtered against the blacklist (dead proxies from last 3 hours). Output uploaded as GitHub Actions artifact.
 
 **Source types:**
 - **REST APIs (5):** ProxyScrape, Geonode, Databay, Shodan (key required), Censys (key required)
-- **GitHub raw text (26):** ErcinDedeoglu (~37k), vmheaven (~19k), zevtyardt (~15k), r00tee (~10k), TheSpeedX (~8k), ProxyScraper-GH (~8k), dinoz0rg (~5k checked), jetkai (~4k), Proxifly (~3k), iplocate (~2.5k), sunny9577 (~2.2k), mmpx12 (~1.5k), Vann-Dev (~1.5k), zloi (~1.3k), ClearProxy (~800), spys.me (~800), vakhov (~700), clarketm (~400), fyvri (~300+), MuRongPIG (~300+), casa (~300+), fate0 (~250), roosterkid (~230), monosans (~200), prxchk (~100), hookzof (~90)
+- **GitHub raw text (26):** ErcinDedeoglu (~34k), vmheaven (~19k), zevtyardt (~15k), r00tee (~13k), TheSpeedX (~7k), ProxyScraper-GH (~7k), dinoz0rg (~1k checked), jetkai (~4k), Proxifly (~3k), iplocate (~4k), sunny9577 (~2k), mmpx12 (~1.5k), Vann-Dev (~1.3k), zloi (~1.1k), ClearProxy (~800), spys.me (~800), vakhov (~700), clarketm (~400), MuRongPIG (~250 checked), casa (~50k capped), fate0 (~250), roosterkid (~230), monosans (~200), prxchk (~100), hookzof (~60)
+- **Bulk GitHub (14 repos):** ebrasha (~10k), Munachukwuw (~13k), gitrecon1455 (~10k), proxygenerator1 (~8k), dpangestuw (~7k), officialputuid (~4k), TuanMinPay (~3k), komutan234 (~3k), Anonym0usWork1221 (~3.6k), openproxyhub (~1.8k), Skiddle-ID (~1.9k), itsanwar (~1k), alphaa1111 (~900), trio666 (~2.1k)
+- **Meta-source (76 URLs):** acidvegas/proxytools proxy_sources.txt — curated list of API endpoints and raw URLs, all fetched in parallel
 - **HTML scraping (1):** free-proxy-list.net family (4 sites, regex IP:port extraction)
 - **Active probing (1):** Scanner (TCP probe + fingerprinting, disabled by default)
 
