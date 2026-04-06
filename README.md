@@ -18,18 +18,22 @@ Worldpool aggregates proxies from 34 sources, validates every one for liveness, 
 ## Pipeline
 
 ```
-SCRAPE ─── 34 sources in parallel
+SCRAPE ───── 34 sources in parallel (5k cap per source)
   │
-DEDUP ──── normalize host:port, first-seen wins
+DEDUP ────── normalize host:port, first-seen wins
   │
-VALIDATE ─ alive, anonymity, latency, hijack detection, site-pass checks
+BLACKLIST ── skip proxies confirmed dead within last 3 hours (DB cached across runs)
   │
+VALIDATE ─── alive, anonymity, latency, hijack detection, site-pass checks
+  │            results stream to text files in real-time
   ├── [optional] TENDRIL ── P2P distributed validation from multiple regions
   │
-STORE ──── SQLite upsert, reliability tracking over time
+STORE ────── SQLite upsert, reliability tracking over time
   │
-EXPORT ─── text files by protocol/speed/site/anonymity, JSON, stats
+EXPORT ───── text files by protocol/speed/site/anonymity, JSON, stats
 ```
+
+First run validates all scraped proxies (~20k). Subsequent runs skip recently-dead proxies and only validate new + previously-alive ones (~3-5k), completing in ~15-20 minutes instead of hours.
 
 ---
 
@@ -195,11 +199,14 @@ npx tsx src/test-proxies.ts 10 proxies/by-speed/fast.txt
 
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `VALIDATOR_CONCURRENCY` | `100` | Parallel validation connections (CI uses 200) |
+| `VALIDATOR_TIMEOUT_MS` | `5000` | Per-proxy timeout |
+| `MAX_PER_SOURCE` | `5000` | Cap proxies per source to prevent memory issues |
+| `BLACKLIST_WINDOW_SEC` | `10800` | Skip dead proxies checked within this window (3h) |
+| `SKIP_GOOGLE_PASS` | `false` | Skip Google 204 check |
+| `SKIP_SITE_PASS` | `false` | Skip Discord/TikTok/IG/X/Reddit checks |
 | `JUDGE_URL` | `localhost:3001/judge` | Judge server for anonymity detection |
 | `JUDGE_TOKEN` | `dev-token` | Judge server auth |
-| `VALIDATOR_CONCURRENCY` | `100` | Parallel validation connections |
-| `VALIDATOR_TIMEOUT_MS` | `5000` | Per-proxy timeout |
-| `SKIP_GOOGLE_PASS` | `false` | Skip Google check |
 | `MAXMIND_LICENSE_KEY` | — | Enables offline geolocation |
 | `SHODAN_API_KEY` | — | Enables Shodan source |
 | `CENSYS_API_ID` / `SECRET` | — | Enables Censys source |

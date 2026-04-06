@@ -2,19 +2,19 @@
 
 ## Pipeline
 
-5-stage pipeline, hourly via GitHub Actions.
+6-stage pipeline, hourly via GitHub Actions. SQLite DB cached between runs.
 
 ```
-SCRAPE ──▶ DEDUP ──▶ VALIDATE ──▶ STORE ──▶ EXPORT
-34 sources   host:port   judge/httpbin   SQLite    txt/json
-in parallel  normalize   anonymity       upsert    per-site
-(50k cap)    first wins  hijack detect   uptime    stats
-                         site-pass                 README
+SCRAPE ──▶ DEDUP ──▶ BLACKLIST ──▶ VALIDATE ──▶ STORE ──▶ EXPORT
+34 sources   host:port   skip dead      judge/httpbin   SQLite    txt/json
+in parallel  normalize   proxies from   anonymity       upsert    per-site
+(5k cap)     first wins  last 3 hours   hijack detect   uptime    stats
+                                        stream to txt             README
 ```
 
 ## Stage 1: Scrape
 
-34 sources run in parallel via `Promise.allSettled()`. Each source has its own module in `src/scrapers/`. Safety cap of 50k proxies per source.
+34 sources run in parallel via `Promise.allSettled()`. Each source has its own module in `src/scrapers/`. Per-source cap configurable via `MAX_PER_SOURCE` (default 5k).
 
 **Source types:**
 - **REST APIs (5):** ProxyScrape, Geonode, Databay, Shodan, Censys
@@ -37,9 +37,18 @@ const scrapers = [
 
 Normalize host to lowercase, key by `host:port`, first-seen wins.
 
+## Stage 2.5: Blacklist
+
+Queries the SQLite DB for proxies that were confirmed dead within the last 3 hours (configurable via `BLACKLIST_WINDOW_SEC`). These are filtered out before validation — no point re-checking a proxy that was dead 1 hour ago.
+
+- **Run 1 (cold):** No DB, validates everything (~20k proxies)
+- **Run 2+ (warm):** Skips ~80% of scraped proxies, validates ~3-5k in ~15-20 min
+- **After 3 hours:** Dead proxies become eligible for retry (they might have come back)
+- DB is cached between GitHub Actions runs via `actions/cache`
+
 ## Stage 3: Validate
 
-Concurrent validation via `p-limit` (default 100, max 200 connections).
+Concurrent validation via `p-limit` (default 100, CI uses 200). Results stream to text files in real-time via `onResult` callback — proxy files populate progressively during validation, not just at the end.
 
 **Checks per proxy:**
 
@@ -78,7 +87,11 @@ SQLite with WAL mode. Upsert by `proxy_id` (`host:port`).
 
 ## Deployment
 
-**GitHub Actions (primary):** Hourly cron, GeoLite2 databases cached between runs via `actions/cache`. Download step is non-fatal (free API fallback).
+**GitHub Actions (primary):** Hourly cron, 90-min timeout, 200 concurrency. Two caches persist between runs:
+- `worldpool.db` — proxy database (enables blacklist, reliability tracking)
+- `data/*.mmdb` — GeoLite2 databases (avoids re-downloading every hour)
+
+GeoLite2 download step is non-fatal (free API fallback). Site-pass checks disabled in CI for speed (`SKIP_SITE_PASS=true`).
 
 **Local/VPS (optional):** `npm start` for API + background pipeline.
 
