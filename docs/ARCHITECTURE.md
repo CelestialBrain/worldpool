@@ -89,23 +89,42 @@ Downloads all 12 shard artifacts, merges, filters invalid entries (bad ports), s
 
 ## Deployment
 
-### GitHub Actions (Primary)
+### GitHub Actions (Primary — validation)
 
 Every 20 minutes, 14 runners, $0 cost (public repo).
 
 **Caches persisted between runs:**
-- `worldpool.db` — proxy database (blacklist, reliability tracking) — `save-always: true`
-- `data/*.mmdb` — GeoLite2 databases — `save-always: true`
+- `worldpool.db` — proxy database (blacklist, reliability tracking)
+- `data/*.mmdb` — GeoLite2 databases
 
 **Safety:**
 - `concurrency` group prevents overlapping runs
 - `fail-fast: false` on validation matrix
 - `if: always()` on merge job (runs even if some shards fail)
 - GeoLite2 download is non-fatal (free API fallback)
+- 30s hard timeout per proxy, 150 min global deadline
+- `git pull --rebase` before push (handles concurrent commits)
 
-### Local / VPS (Optional)
+### Hetzner VPS (Scanner — discovery)
 
-`npm run pipeline` runs the original single-runner pipeline.
+CX23 (2 vCPU, 4GB RAM, Helsinki), €4.49/mo. Runs continuously via systemd.
+
+**Service:** `/etc/systemd/system/worldpool-scanner.service`
+- `Restart=always`, `RestartSec=60` — auto-restart on crash
+- Logs to journald (`journalctl -u worldpool-scanner`)
+- Pulls latest code before each scan cycle
+- Pushes `data/scanner-discovered.txt` to repo after each cycle
+
+**Scanner settings:**
+- 500 concurrency, 5000 rate, 500ms timeout
+- Ports: 1080, 3128, 8080
+- Targets: all unique IPs from `proxies/all-ever-seen.txt`
+- Processes in 10k chunks (prevents OOM)
+- ~2 min per full scan cycle, runs continuously
+
+### Local (Optional)
+
+`npm run pipeline` runs the single-runner pipeline.
 `npm start` starts API server + background pipeline.
 
 ## Tendril: Distributed Validation

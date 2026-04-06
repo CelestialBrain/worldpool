@@ -11,34 +11,29 @@
 
 **Global proxy pool. Self-maintaining, free, open.**
 
-Worldpool aggregates proxies from 120+ sources (34 direct scrapers + 14 bulk GitHub repos + 76 meta-source URLs), validates every one for liveness, anonymity, latency, hijack detection, and site-specific reachability (Google, Discord, TikTok, Instagram, X, Reddit), then exports curated lists and serves them via a REST API. Runs every 20 minutes on GitHub Actions using 12 parallel validation runners.
+Worldpool aggregates proxies from 120+ sources (34 direct scrapers + 14 bulk GitHub repos + 76 meta-source URLs + VPS port scanner), validates every one for liveness, anonymity, latency, hijack detection, and site-specific reachability (Google, Discord, TikTok, Instagram, X, Reddit), then exports curated lists and serves them via a REST API. Runs every 20 minutes on GitHub Actions using 12 parallel validation runners. A dedicated Hetzner VPS continuously scans for new proxy ports and feeds discoveries into the pipeline.
 
 ---
 
 ## Pipeline
 
 ```
-SCRAPE (1 runner, ~15s)
-  34 sources → deduplicate → blacklist recently-dead proxies
+VPS SCANNER (Hetzner, continuous)
+  probe 60k+ IPs on ports 1080/3128/8080 → push discoveries to repo
+    │
+SCRAPE (1 runner, ~15s)                          ← GitHub Actions
+  120+ sources + scanner-discovered.txt → dedup → blacklist dead proxies
     │
     ├── SHARD 0  ──┐
     ├── SHARD 1    │
-    ├── SHARD 2    │
-    ├── SHARD 3    │
-    ├── SHARD 4    │  12 runners validate in parallel
-    ├── SHARD 5    │  alive + anonymity + latency + hijack detect
-    ├── SHARD 6    │  + Google + Discord + TikTok + IG + X + Reddit
-    ├── SHARD 7    │  results stream to text files in real-time
-    ├── SHARD 8    │
-    ├── SHARD 9    │
-    ├── SHARD 10   │
-    └── SHARD 11 ──┘
+    ├── ...        │  12 runners validate in parallel
+    └── SHARD 11 ──┘  alive + anonymity + latency + hijack + site-pass
     │
 MERGE (1 runner, ~15s)
-  combine shards → store to DB → export files → update README → commit
+  combine shards → store to DB → export files → commit
 ```
 
-**Cold start:** ~20-25 min. **Warm (blacklist active):** ~10 min. **Every 20 minutes. $0 cost (public repo).**
+**Warm runs:** ~5-10 min. **Every 20 minutes. $0 Actions cost. VPS: €4.49/mo.**
 
 ---
 
@@ -232,26 +227,36 @@ npx tsx src/test-proxies.ts 10 proxies/by-speed/fast.txt
 
 ## Architecture
 
-### Parallel Validation (GitHub Actions)
+### GitHub Actions Pipeline
 
-3-phase pipeline across 14 runners:
+3-phase pipeline across 14 runners, every 20 minutes:
 
-1. **Scrape** (1 runner, ~15s) — 34 sources, dedup, blacklist, upload artifact
-2. **Validate** (12 runners in parallel, ~5-20 min) — each shard validates a slice at 200 concurrency with 30s hard timeout, streams to text files, uploads artifact
+1. **Scrape** (1 runner, ~15s) — 120+ sources + scanner-discovered.txt, dedup, inject alive proxies from DB, blacklist dead, upload artifact
+2. **Validate** (12 runners in parallel, ~5-20 min) — 200 concurrency, 30s hard timeout, site-pass checks, streams to text files
 3. **Merge** (1 runner, ~15s) — combine shards, store to SQLite, export, commit
+
+### VPS Scanner (Hetzner Helsinki, €4.49/mo)
+
+Runs continuously via systemd. Each cycle:
+1. Pulls latest `all-ever-seen.txt` from repo (gets new IPs from Actions)
+2. Probes 60k+ IPs on ports 1080/3128/8080 at 500 concurrency
+3. Writes `data/scanner-discovered.txt` and pushes to repo
+4. Actions picks up discoveries on next run
 
 ### Blacklist
 
-SQLite DB cached between runs. Dead proxies from the last 3 hours are skipped. First run validates everything; subsequent runs skip ~80% of dead proxies.
+SQLite DB cached between Actions runs. Dead proxies from the last 3 hours are skipped. Subsequent runs only validate new + previously-alive proxies (~80% reduction).
 
-### Safety
+### Safety & Guardrails
 
 - 30s hard timeout per proxy (no hung connections)
 - 150 min global validation deadline
+- 10k chunk processing in scanner (prevents OOM)
 - `fail-fast: false` on matrix (one shard failing doesn't kill others)
-- `save-always: true` on DB cache (saves even on timeout/cancel)
 - `if: always()` on commit and merge (partial results still saved)
-- Concurrency group prevents overlapping runs
+- Concurrency group prevents overlapping Actions runs
+- systemd `Restart=always` on VPS scanner (auto-restarts on crash)
+- `git pull --rebase` before push (handles concurrent commits)
 
 ---
 
@@ -265,6 +270,7 @@ SQLite DB cached between runs. Dead proxies from the last 3 hours are skipped. F
 | P2P | Hyperswarm + CRDTs |
 | Geolocation | MaxMind GeoLite2 |
 | CI/CD | GitHub Actions (12 shards, every 20 min, $0) |
+| Scanner | Hetzner CX23 VPS (Helsinki, continuous, €4.49/mo) |
 
 ---
 
