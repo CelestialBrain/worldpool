@@ -189,5 +189,6 @@ jobs:
           google-pass:  ${GPASS_COUNT} proxies
           hijacked:     ${HIJACKED_COUNT} proxies"
 
+            git pull --rebase origin main || true
             git push
           fi
