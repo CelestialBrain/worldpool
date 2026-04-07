@@ -82,7 +82,7 @@ Downloads all 12 shard artifacts, merges, filters invalid entries (bad ports), s
 **Export outputs:**
 - `proxies/` — flat text by protocol, speed tier, anonymity, site
 - `proxies/by-site/` — per-platform lists (google, discord, tiktok, instagram, x, reddit)
-- `proxies/hijacked.*` + `malicious-asn.txt` — threat intel
+- `proxies/hijacked.txt` + `malicious-asn.txt` — threat intel (hijacked.json gitignored, >100MB)
 - `data/proxies.json` + `data/stats.json` — structured data
 - README stats + badges auto-updated
 - CHANGELOG.md appended with deltas

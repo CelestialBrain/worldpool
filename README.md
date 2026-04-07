@@ -19,7 +19,7 @@ Worldpool aggregates proxies from 120+ sources (34 direct scrapers + 14 bulk Git
 
 ```
 VPS SCANNER (Hetzner, continuous)
-  probe 60k+ IPs on ports 1080/3128/8080 → push discoveries to repo
+  probe 200k IPs × 17 ports (~3.4M probes) → push discoveries to repo
     │
 SCRAPE (1 runner, ~15s)                          ← GitHub Actions
   120+ sources + scanner-discovered.txt → dedup → blacklist dead proxies
@@ -143,8 +143,7 @@ Updated every 20 minutes via GitHub Actions.
 ### Threat Intel
 | File | Description |
 |------|-------------|
-| [`proxies/hijacked.txt`](proxies/hijacked.txt) | Hijacked proxy IPs |
-| [`proxies/hijacked.json`](proxies/hijacked.json) | Full hijack details with classification |
+| [`proxies/hijacked.txt`](proxies/hijacked.txt) | Hijacked proxy IPs (88k+) |
 | [`proxies/malicious-asn.txt`](proxies/malicious-asn.txt) | ASNs ranked by hijacked count |
 
 ### Structured Data
