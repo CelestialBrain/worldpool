@@ -112,16 +112,16 @@ CX23 (2 vCPU, 4GB RAM, Helsinki), €4.49/mo. Runs continuously via systemd.
 **Service:** `/etc/systemd/system/worldpool-scanner.service`
 - `Restart=always`, `RestartSec=60` — auto-restart on crash
 - Logs to journald (`journalctl -u worldpool-scanner`)
-- Pulls latest code before each scan cycle
-- Pushes `data/scanner-discovered.txt` to repo after each cycle
+- Resets local changes and pulls latest before each cycle (handles Actions commits)
+- Copies scanner results to /tmp, pulls clean, copies back, commits, pushes
+- Pushes `data/scanner-discovered.txt` (~100k entries) to repo after each cycle
 
 **Scanner settings:**
 - 500 concurrency, 5000 rate, 500ms timeout
 - 17 ports: 1080, 3128, 8080, 8888, 80, 443, 8443, 4145, 4153, 9050, 9150, 1081, 1082, 1085, 8181, 3129, 8118
-- ~1M probes per cycle, ~14 min per cycle, continuous (no sleep)
-- Targets: all unique IPs from `proxies/all-ever-seen.txt`
+- ~1M probes per cycle, ~14 min per cycle, continuous (10s sleep between cycles)
+- Targets: all unique IPs from `proxies/all-ever-seen.txt` (currently 340k+)
 - Processes in 10k chunks (prevents OOM)
-- ~2 min per full scan cycle, runs continuously
 
 ### Local (Optional)
 
