@@ -11,18 +11,15 @@
 
 **Global proxy pool. Self-maintaining, free, open.**
 
-Worldpool aggregates proxies from 120+ sources (34 direct scrapers + 14 bulk GitHub repos + 76 meta-source URLs + VPS port scanner), validates every one for liveness, anonymity, latency, hijack detection, and site-specific reachability (Google, Discord, TikTok, Instagram, X, Reddit), then exports curated lists and serves them via a REST API. Runs every 20 minutes on GitHub Actions using 12 parallel validation runners. A dedicated Hetzner VPS continuously scans for new proxy ports and feeds discoveries into the pipeline.
+Worldpool aggregates proxies from 120+ sources (34 direct scrapers + 14 bulk GitHub repos + 76 meta-source URLs), validates every one for liveness, anonymity, latency, hijack detection, and site-specific reachability (Google, Discord, TikTok, Instagram, X, Reddit), then exports curated lists and serves them via a REST API. Runs every 20 minutes on GitHub Actions using 12 parallel validation runners.
 
 ---
 
 ## Pipeline
 
 ```
-VPS SCANNER (Hetzner, continuous)
-  probe 200k IPs × 17 ports (~3.4M probes) → push discoveries to repo
-    │
-SCRAPE (1 runner, ~15s)                          ← GitHub Actions
-  120+ sources + scanner-discovered.txt → dedup → blacklist dead proxies
+SCRAPE (1 runner, ~15s)
+  120+ sources → dedup → inject alive proxies from DB → blacklist dead
     │
     ├── SHARD 0  ──┐
     ├── SHARD 1    │
@@ -33,7 +30,7 @@ MERGE (1 runner, ~15s)
   combine shards → store to DB → export files → commit
 ```
 
-**Warm runs:** ~5-10 min. **Every 20 minutes. $0 Actions cost. VPS: €4.49/mo.**
+**Warm runs:** ~5-10 min. **Every 20 minutes. $0 cost (public repo).**
 
 ---
 
@@ -74,14 +71,13 @@ Actual counts from latest pipeline run (auto-updated):
 | Hookzof | 63 | SOCKS5 only |
 | Shodan API | — | Requires key |
 | Censys API | — | Requires key |
-| VPS Scanner | Varies | Hetzner VPS, continuous |
+| Shodan API | — | Requires key |
+| Censys API | — | Requires key |
 
 **Bulk GitHub sources (14 repos in single scraper):**
 ebrasha (~10k), Munachukwuw (~13k), gitrecon1455 (~10k), proxygenerator1 (~8k), dpangestuw (~7k), officialputuid (~4k), TuanMinPay (~3k), komutan234 (~3k), Anonym0usWork1221 (~3.6k), openproxyhub (~1.8k), Skiddle-ID (~1.9k), itsanwar (~1k), alphaa1111 (~900), trio666 (~2.1k)
 
 **Meta-source scraper:** Fetches [acidvegas/proxytools](https://github.com/acidvegas/proxytools) proxy_sources.txt — 76 curated API endpoints and raw URLs, scraped in parallel.
-
-**VPS Scanner:** Hetzner CX23 (Helsinki) runs continuously, probing 60k+ IPs across 17 ports (1080, 3128, 8080, 8888, 80, 443, 8443, 4145, 4153, 9050, 9150, 1081, 1082, 1085, 8181, 3129, 8118) at 500 concurrency. ~1M probes per cycle, ~14 min per cycle. Discovered proxies pushed to `data/scanner-discovered.txt` and picked up by the next pipeline run.
 
 ---
 
@@ -230,17 +226,9 @@ npx tsx src/test-proxies.ts 10 proxies/by-speed/fast.txt
 
 3-phase pipeline across 14 runners, every 20 minutes:
 
-1. **Scrape** (1 runner, ~15s) — 120+ sources + scanner-discovered.txt, dedup, inject alive proxies from DB, blacklist dead, upload artifact
+1. **Scrape** (1 runner, ~15s) — 120+ sources, dedup, inject alive proxies from DB, blacklist dead, upload artifact
 2. **Validate** (12 runners in parallel, ~5-20 min) — 200 concurrency, 30s hard timeout, site-pass checks, streams to text files
 3. **Merge** (1 runner, ~15s) — combine shards, store to SQLite, export, commit
-
-### VPS Scanner (Hetzner Helsinki, €4.49/mo)
-
-Runs continuously via systemd (~14 min per cycle, no sleep). Each cycle:
-1. Pulls latest `all-ever-seen.txt` from repo (gets new IPs from Actions)
-2. Probes 60k+ IPs across 17 ports (~1M probes) at 500 concurrency, 500ms timeout
-3. Writes `data/scanner-discovered.txt` and pushes to repo
-4. Actions picks up discoveries on next run
 
 ### Blacklist
 
@@ -250,11 +238,9 @@ SQLite DB cached between Actions runs. Dead proxies from the last 3 hours are sk
 
 - 30s hard timeout per proxy (no hung connections)
 - 150 min global validation deadline
-- 10k chunk processing in scanner (prevents OOM)
 - `fail-fast: false` on matrix (one shard failing doesn't kill others)
 - `if: always()` on commit and merge (partial results still saved)
 - Concurrency group prevents overlapping Actions runs
-- systemd `Restart=always` on VPS scanner (auto-restarts on crash)
 - `git pull --rebase` before push (handles concurrent commits)
 
 ---
@@ -269,7 +255,6 @@ SQLite DB cached between Actions runs. Dead proxies from the last 3 hours are sk
 | P2P | Hyperswarm + CRDTs |
 | Geolocation | MaxMind GeoLite2 |
 | CI/CD | GitHub Actions (12 shards, every 20 min, $0) |
-| Scanner | Hetzner CX23 VPS (Helsinki, continuous, €4.49/mo) |
 
 ---
 
