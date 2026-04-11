@@ -105,7 +105,6 @@ Updated every 20 minutes via GitHub Actions.
 | File | Description |
 |------|-------------|
 | [`proxies/all.txt`](proxies/all.txt) | All alive proxies |
-| [`proxies/all-ever-seen.txt`](proxies/all-ever-seen.txt) | Every proxy ever discovered (cumulative, 340k+) |
 | [`proxies/http.txt`](proxies/http.txt) | HTTP proxies |
 | [`proxies/socks4.txt`](proxies/socks4.txt) | SOCKS4 proxies |
 | [`proxies/socks5.txt`](proxies/socks5.txt) | SOCKS5 proxies |
