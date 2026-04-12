@@ -125,6 +125,7 @@ export interface ProxyQueryOption {
   google_pass?: boolean;
   alive_only?: boolean;
   max_latency_ms?: number;
+  country?: string;
   limit?: number;
   offset?: number;
 }

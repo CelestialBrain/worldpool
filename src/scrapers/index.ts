@@ -38,6 +38,7 @@ import { scrape as freeproxylist } from './freeproxylist.js';
 import { scrape as bulkGithub } from './bulk-github.js';
 import { scrape as acidvegas } from './acidvegas.js';
 import { scrape as scannerFile } from './scanner-file.js';
+import { scrape as countryApis } from './country-apis.js';
 import type { RawProxy } from '../types.js';
 import { config } from '../config.js';
 import { createLogger } from '../utils/logger.js';
@@ -81,6 +82,7 @@ const scrapers = [
   { name: 'bulk-github', fn: bulkGithub },
   { name: 'acidvegas', fn: acidvegas },
   { name: 'scanner-file', fn: scannerFile },
+  { name: 'country-apis', fn: countryApis },
 ];
 
 export async function scrapeAll(): Promise<RawProxy[]> {

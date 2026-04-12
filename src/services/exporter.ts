@@ -129,12 +129,15 @@ export async function exportFiles(): Promise<void> {
   const bySpeedDir = join(proxiesDir, 'by-speed');
   const bySiteDir = join(proxiesDir, 'by-site');
 
+  const byCountryDir = join(proxiesDir, 'by-country');
+
   await Promise.all([
     ensureDir(proxiesDir),
     ensureDir(dataDir),
     ensureDir(byAnonymityDir),
     ensureDir(bySpeedDir),
     ensureDir(bySiteDir),
+    ensureDir(byCountryDir),
   ]);
 
   // Query alive proxies by protocol
@@ -190,6 +193,10 @@ export async function exportFiles(): Promise<void> {
     writeFile(join(bySpeedDir, 'slow.txt'), toLines(slow)),
     // by-site subdirectory
     ...siteNames.map(s => writeFile(join(bySiteDir, `${s}.txt`), toLines(bySite[s]))),
+    // by-country subdirectory (top countries + PH)
+    ...['US', 'CN', 'DE', 'JP', 'KR', 'RU', 'SG', 'PH', 'IN', 'BR', 'FR', 'GB', 'HK', 'TH', 'VN', 'ID'].map(cc =>
+      writeFile(join(byCountryDir, `${cc}.txt`), toLines(queryProxy({ country: cc, alive_only: true, limit: 100_000 }))),
+    ),
     // Data exports
     writeFile(join(dataDir, 'proxies.json'), JSON.stringify(all, null, 2)),
     writeFile(join(dataDir, 'stats.json'), JSON.stringify(fullStats, null, 2)),

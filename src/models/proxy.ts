@@ -129,6 +129,10 @@ export function queryProxy(opts: ProxyQueryOption): ProxyResponse[] {
     conditions.push('latency_ms <= @max_latency_ms');
     params.max_latency_ms = opts.max_latency_ms;
   }
+  if (opts.country) {
+    conditions.push('country = @country');
+    params.country = opts.country.toUpperCase();
+  }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   const limit = opts.limit ?? 100;
