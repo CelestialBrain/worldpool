@@ -70,7 +70,6 @@ Actual counts from latest pipeline run (auto-updated):
 | prxchk | 100 | Every 10 min |
 | Hookzof | 63 | SOCKS5 only |
 | Shodan API | — | Requires key |
-| Shodan API | — | Requires key |
 | Censys API | — | Requires key |
 
 **Bulk GitHub sources (14 repos in single scraper):**
@@ -78,7 +77,9 @@ ebrasha (~10k), Munachukwuw (~13k), gitrecon1455 (~10k), proxygenerator1 (~8k), 
 
 **Meta-source scraper:** Fetches [acidvegas/proxytools](https://github.com/acidvegas/proxytools) proxy_sources.txt — 76 curated API endpoints and raw URLs, scraped in parallel.
 
-**Country-specific API scraper:** Hits ProxyScrape, Databay, and Geonode with country filters for PH, ID, TH, VN, MY, BD, PK, KH, MM — underrepresented countries in global proxy lists.
+**Country-specific API scraper:** Hits ProxyScrape, Databay, and Geonode with country filters for PH, ID, TH, VN, MY, BD, PK, KH, MM — underrepresented countries in global proxy lists. Currently contributes ~2.4k proxies per run.
+
+**Scanner-file:** Reads `data/scanner-discovered.txt` (legacy from the VPS scanner, ~195k entries). The VPS is discontinued but the file remains as historical data for the blacklist.
 
 ---
 
