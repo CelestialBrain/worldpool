@@ -28,8 +28,9 @@ Entry point: `npm run pipeline:scrape` (`src/pipeline-scrape.ts`)
 - **GitHub raw text (26):** ErcinDedeoglu (~34k), vmheaven (~19k), zevtyardt (~15k), r00tee (~13k), TheSpeedX (~7k), ProxyScraper-GH (~7k), dinoz0rg (~1k checked), jetkai (~4k), Proxifly (~3k), iplocate (~4k), sunny9577 (~2k), mmpx12 (~1.5k), Vann-Dev (~1.3k), zloi (~1.1k), ClearProxy (~800), spys.me (~800), vakhov (~700), clarketm (~400), MuRongPIG (~250 checked), casa (~50k capped), fate0 (~250), roosterkid (~230), monosans (~200), prxchk (~100), hookzof (~60)
 - **Bulk GitHub (14 repos):** ebrasha (~10k), Munachukwuw (~13k), gitrecon1455 (~10k), proxygenerator1 (~8k), dpangestuw (~7k), officialputuid (~4k), TuanMinPay (~3k), komutan234 (~3k), Anonym0usWork1221 (~3.6k), openproxyhub (~1.8k), Skiddle-ID (~1.9k), itsanwar (~1k), alphaa1111 (~900), trio666 (~2.1k)
 - **Meta-source (76 URLs):** acidvegas/proxytools proxy_sources.txt — curated list of API endpoints and raw URLs, all fetched in parallel
+- **Country-specific APIs (3 APIs × 9 countries):** ProxyScrape, Databay, Geonode with country filters for PH, ID, TH, VN, MY, BD, PK, KH, MM
 - **HTML scraping (1):** free-proxy-list.net family (4 sites, regex IP:port extraction)
-- **Active probing (1):** Scanner (TCP probe + fingerprinting, disabled by default)
+- **Active probing (1):** Scanner (TCP probe + fingerprinting, discontinued on VPS, available for local use)
 
 **Fetcher contract:** `export async function scrape(): Promise<RawProxy[]>`
 
@@ -82,6 +83,7 @@ Downloads all 12 shard artifacts, merges, filters invalid entries (bad ports), s
 **Export outputs:**
 - `proxies/` — flat text by protocol, speed tier, anonymity, site
 - `proxies/by-site/` — per-platform lists (google, discord, tiktok, instagram, x, reddit)
+- `proxies/by-country/` — per-country lists (US, CN, DE, JP, KR, RU, SG, PH, IN, BR, FR, GB, HK, TH, VN, ID)
 - `proxies/hijacked.txt` + `malicious-asn.txt` — threat intel (hijacked.json gitignored, >100MB)
 - `data/proxies.json` + `data/stats.json` — structured data
 - README stats + badges auto-updated

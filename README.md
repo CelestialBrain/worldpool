@@ -70,7 +70,6 @@ Actual counts from latest pipeline run (auto-updated):
 | prxchk | 100 | Every 10 min |
 | Hookzof | 63 | SOCKS5 only |
 | Shodan API | — | Requires key |
-| Censys API | — | Requires key |
 | Shodan API | — | Requires key |
 | Censys API | — | Requires key |
 
@@ -78,6 +77,8 @@ Actual counts from latest pipeline run (auto-updated):
 ebrasha (~10k), Munachukwuw (~13k), gitrecon1455 (~10k), proxygenerator1 (~8k), dpangestuw (~7k), officialputuid (~4k), TuanMinPay (~3k), komutan234 (~3k), Anonym0usWork1221 (~3.6k), openproxyhub (~1.8k), Skiddle-ID (~1.9k), itsanwar (~1k), alphaa1111 (~900), trio666 (~2.1k)
 
 **Meta-source scraper:** Fetches [acidvegas/proxytools](https://github.com/acidvegas/proxytools) proxy_sources.txt — 76 curated API endpoints and raw URLs, scraped in parallel.
+
+**Country-specific API scraper:** Hits ProxyScrape, Databay, and Geonode with country filters for PH, ID, TH, VN, MY, BD, PK, KH, MM — underrepresented countries in global proxy lists.
 
 ---
 
@@ -135,10 +136,25 @@ Updated every 20 minutes via GitHub Actions.
 | [`proxies/by-site/x.txt`](proxies/by-site/x.txt) | Works with X/Twitter |
 | [`proxies/by-site/reddit.txt`](proxies/by-site/reddit.txt) | Works with Reddit |
 
+### By Country
+| File | Description |
+|------|-------------|
+| [`proxies/by-country/PH.txt`](proxies/by-country/PH.txt) | Philippines |
+| [`proxies/by-country/US.txt`](proxies/by-country/US.txt) | United States |
+| [`proxies/by-country/CN.txt`](proxies/by-country/CN.txt) | China |
+| [`proxies/by-country/DE.txt`](proxies/by-country/DE.txt) | Germany |
+| [`proxies/by-country/JP.txt`](proxies/by-country/JP.txt) | Japan |
+| [`proxies/by-country/KR.txt`](proxies/by-country/KR.txt) | South Korea |
+| [`proxies/by-country/SG.txt`](proxies/by-country/SG.txt) | Singapore |
+| [`proxies/by-country/IN.txt`](proxies/by-country/IN.txt) | India |
+| [`proxies/by-country/RU.txt`](proxies/by-country/RU.txt) | Russia |
+| [`proxies/by-country/GB.txt`](proxies/by-country/GB.txt) | United Kingdom |
+| + BR, FR, HK, TH, VN, ID | |
+
 ### Threat Intel
 | File | Description |
 |------|-------------|
-| [`proxies/hijacked.txt`](proxies/hijacked.txt) | Hijacked proxy IPs (88k+) |
+| [`proxies/hijacked.txt`](proxies/hijacked.txt) | Hijacked proxy IPs (207k+) |
 | [`proxies/malicious-asn.txt`](proxies/malicious-asn.txt) | ASNs ranked by hijacked count |
 
 ### Structured Data
