@@ -11,7 +11,7 @@
 
 **Global proxy pool. Self-maintaining, free, open.**
 
-Worldpool aggregates proxies from 120+ sources (34 direct scrapers + 14 bulk GitHub repos + 76 meta-source URLs), validates every one for liveness, anonymity, latency, hijack detection, and site-specific reachability (Google, Discord, TikTok, Instagram, X, Reddit), then exports curated lists and serves them via a REST API. Runs every 20 minutes on GitHub Actions using 12 parallel validation runners.
+Worldpool aggregates proxies from 120+ sources (34 direct scrapers + 14 bulk GitHub repos + 76 meta-source URLs), validates every one for liveness, anonymity, latency, hijack detection, and site-specific reachability (Google, Discord, TikTok, Instagram, X, Reddit, Watsons.com.ph), then exports curated lists and serves them via a REST API. Runs every 20 minutes on GitHub Actions using 12 parallel validation runners.
 
 ---
 
@@ -94,7 +94,7 @@ Every proxy gets a 30-second hard timeout and these checks:
 | **Latency** | Round-trip time in milliseconds |
 | **Google Pass** | Can the proxy reach `google.com/generate_204`? |
 | **Hijack Detection** | 5 types: ad injection, redirect, captive portal, content substitution, SSL strip |
-| **Site Pass** | Tests Discord, TikTok, Instagram, X/Twitter, Reddit reachability |
+| **Site Pass** | Tests Discord, TikTok, Instagram, X/Twitter, Reddit, Watsons.com.ph reachability |
 | **Geolocation** | Country + ASN via MaxMind GeoLite2 or free API |
 
 ---
@@ -226,7 +226,7 @@ npx tsx src/test-proxies.ts 10 proxies/by-speed/fast.txt
 | `MAX_PER_SOURCE` | `0` (no cap) | Cap proxies per source (0 = unlimited) |
 | `BLACKLIST_WINDOW_SEC` | `10800` | Skip dead proxies checked within 3h |
 | `SKIP_GOOGLE_PASS` | `false` | Skip Google 204 check |
-| `SKIP_SITE_PASS` | `false` | Skip Discord/TikTok/IG/X/Reddit checks |
+| `SKIP_SITE_PASS` | `false` | Skip Discord/TikTok/IG/X/Reddit/Watsons checks |
 | `JUDGE_URL` | `localhost:3001/judge` | Judge server for anonymity |
 | `JUDGE_TOKEN` | `dev-token` | Judge server auth |
 | `MAXMIND_LICENSE_KEY` | — | Enables offline geolocation |
@@ -250,6 +250,37 @@ npx tsx src/test-proxies.ts 10 proxies/by-speed/fast.txt
 ### Blacklist
 
 SQLite DB cached between Actions runs. Dead proxies from the last 3 hours are skipped. Subsequent runs only validate new + previously-alive proxies (~80% reduction).
+
+### Adding a new site-pass check
+
+When a downstream consumer needs proxies validated against a specific
+site (e.g. an Akamai-fenced or geo-restricted target), add a site-pass
+entry — every alive proxy gets probed against it on the next run, and
+the survivors land in `proxies/by-site/<key>.txt`.
+
+Touch four files:
+
+1. `src/types.ts` — add the new key to the `SitePassKey` union.
+2. `src/services/validator.ts` — add an entry to `SITE_CHECKS`. Prefer
+   a lightweight URL like `/robots.txt` (served pre-challenge by most
+   bot-management layers, so it isolates "network-accepted" cleanly).
+3. `src/services/stream-export.ts` — add the new file to `ALL_FILES`
+   and the new key to the `sites` array inside `streamResult`.
+4. `src/services/exporter.ts` — add the new key to the `siteNames`
+   tuple.
+
+Plus optional: README + `docs/ARCHITECTURE.md` get a row.
+
+Reference: [PR #13](https://github.com/CelestialBrain/worldpool/pull/13)
+added `watsons` for the [presyo](https://github.com/CelestialBrain/presyo)
+PH grocery price platform, which consumes `proxies/by-site/watsons.txt`
+at runtime to surface PH-residential proxies whenever Akamai accepts them.
+
+### Consumer integrations
+
+| Consumer | What it pulls | Why |
+|---|---|---|
+| [presyo](https://github.com/CelestialBrain/presyo) | `proxies/by-site/watsons.txt` | Watsons PH is Akamai-fenced — only PH residential IPs work. Pulled at startup of the Watsons scraper, fallback to env-configured + hardcoded IPs. |
 
 ### Safety & Guardrails
 
