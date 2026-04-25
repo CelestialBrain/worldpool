@@ -3,7 +3,7 @@
 export type ProxyProtocol = 'http' | 'socks4' | 'socks5';
 export type AnonymityLevel = 'elite' | 'anonymous' | 'transparent' | 'unknown';
 export type SpeedTier = 'turbo' | 'fast' | 'medium' | 'slow';
-export type SitePassKey = 'google' | 'discord' | 'tiktok' | 'instagram' | 'x' | 'reddit';
+export type SitePassKey = 'google' | 'discord' | 'tiktok' | 'instagram' | 'x' | 'reddit' | 'watsons';
 export type HijackType =
   | 'ad_injection'
   | 'redirect'
