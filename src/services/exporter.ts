@@ -158,7 +158,7 @@ export async function exportFiles(): Promise<void> {
   const slow = queryProxyByLatencyRange(2001, 999_999);
 
   // by-site pass
-  const siteNames = ['google', 'discord', 'tiktok', 'instagram', 'x', 'reddit'] as const;
+  const siteNames = ['google', 'discord', 'tiktok', 'instagram', 'x', 'reddit', 'watsons'] as const;
   const bySite = Object.fromEntries(siteNames.map(s => [s, queryBySitePass(s)]));
 
   // All ever seen — cumulative list of every proxy that's ever been in the DB

@@ -64,6 +64,7 @@ Downloads the proxy list artifact, takes its slice (shard N of 12), validates ea
 | Instagram | instagram.com/robots.txt | HTTP 2xx/3xx |
 | X/Twitter | x.com/robots.txt | HTTP 2xx/3xx |
 | Reddit | reddit.com/robots.txt | HTTP 2xx/3xx |
+| Watsons | watsons.com.ph/robots.txt | HTTP 2xx/3xx (Akamai geo-fenced, surfaces PH residential proxies) |
 | Geolocation | MaxMind GeoLite2 or free API | Country + ASN |
 
 **Safety mechanisms:**
@@ -82,7 +83,7 @@ Downloads all 12 shard artifacts, merges, filters invalid entries (bad ports), s
 
 **Export outputs:**
 - `proxies/` — flat text by protocol, speed tier, anonymity, site
-- `proxies/by-site/` — per-platform lists (google, discord, tiktok, instagram, x, reddit)
+- `proxies/by-site/` — per-platform lists (google, discord, tiktok, instagram, x, reddit, watsons)
 - `proxies/by-country/` — per-country lists (US, CN, DE, JP, KR, RU, SG, PH, IN, BR, FR, GB, HK, TH, VN, ID)
 - `proxies/hijacked.txt` + `malicious-asn.txt` — threat intel (hijacked.json gitignored, >100MB)
 - `data/proxies.json` + `data/stats.json` — structured data

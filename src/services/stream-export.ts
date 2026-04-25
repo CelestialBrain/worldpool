@@ -35,6 +35,7 @@ const ALL_FILES = [
   join(bySiteDir, 'instagram.txt'),
   join(bySiteDir, 'x.txt'),
   join(bySiteDir, 'reddit.txt'),
+  join(bySiteDir, 'watsons.txt'),
 ];
 
 /** Clear all export text files — call once before validation starts. */
@@ -84,7 +85,7 @@ export function streamResult(proxy: ValidatedProxy): void {
 
     // Site pass
     if (proxy.site_pass) {
-      const sites: SitePassKey[] = ['google', 'discord', 'tiktok', 'instagram', 'x', 'reddit'];
+      const sites: SitePassKey[] = ['google', 'discord', 'tiktok', 'instagram', 'x', 'reddit', 'watsons'];
       for (const site of sites) {
         if (proxy.site_pass[site]) {
           appendFileSync(join(bySiteDir, `${site}.txt`), line);

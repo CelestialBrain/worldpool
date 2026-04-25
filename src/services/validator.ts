@@ -194,6 +194,11 @@ const SITE_CHECKS: Array<{ key: SitePassKey; url: string; pass: (status: number)
   { key: 'instagram', url: 'https://www.instagram.com/robots.txt', pass: (s) => s >= 200 && s < 400 },
   { key: 'x', url: 'https://x.com/robots.txt', pass: (s) => s >= 200 && s < 400 },
   { key: 'reddit', url: 'https://www.reddit.com/robots.txt', pass: (s) => s >= 200 && s < 400 },
+  // Watsons PH is heavily geo-fenced behind Akamai. robots.txt is served
+  // pre-challenge so this surfaces any proxy that Akamai accepts at all
+  // (typically PH residential IPs). Consumed by external scrapers via
+  // proxies/by-site/watsons.txt.
+  { key: 'watsons', url: 'https://www.watsons.com.ph/robots.txt', pass: (s) => s >= 200 && s < 400 },
 ];
 
 async function checkSitePass(

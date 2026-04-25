@@ -136,6 +136,7 @@ Updated every 20 minutes via GitHub Actions.
 | [`proxies/by-site/instagram.txt`](proxies/by-site/instagram.txt) | Works with Instagram |
 | [`proxies/by-site/x.txt`](proxies/by-site/x.txt) | Works with X/Twitter |
 | [`proxies/by-site/reddit.txt`](proxies/by-site/reddit.txt) | Works with Reddit |
+| [`proxies/by-site/watsons.txt`](proxies/by-site/watsons.txt) | Works with Watsons.com.ph (Akamai-protected, geo-fenced — typically PH residential IPs) |
 
 ### By Country
 | File | Description |
