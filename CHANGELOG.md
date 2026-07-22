@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-07-22 08:11 UTC
+- Total alive: 36 (-89)
+- Hijacked blocked: 214,250
+- Google pass: 7 (-23)
+- Avg latency: 1,205 ms
+- Avg reliability: 1.3%
+- By protocol: HTTP 32, SOCKS4 0, SOCKS5 4
+
+
 ## 2026-07-22 07:44 UTC
 - Total alive: 125 (+11)
 - Hijacked blocked: 213,612
