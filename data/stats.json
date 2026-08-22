@@ -1,53 +1,35 @@
 {
-  "proxy_count": 630283,
-  "alive_count": 66,
-  "elite_count": 66,
-  "google_pass_count": 13,
-  "hijacked_count": 226066,
-  "avg_latency_ms": 2216,
+  "proxy_count": 630304,
+  "alive_count": 22,
+  "elite_count": 22,
+  "google_pass_count": 3,
+  "hijacked_count": 226082,
+  "avg_latency_ms": 823,
   "avg_reliability_pct": 1.2,
   "by_protocol": [
     {
       "protocol": "http",
-      "proxy_count": 49
+      "proxy_count": 16
     },
     {
       "protocol": "socks4",
-      "proxy_count": 4
+      "proxy_count": 2
     },
     {
       "protocol": "socks5",
-      "proxy_count": 13
+      "proxy_count": 4
     }
   ],
-  "last_updated": 1787388805,
+  "last_updated": 1787389804,
   "source_quality": [
     {
-      "source": "thespeedx",
-      "total": 3564,
-      "alive": 15,
-      "elite": 15,
-      "google_pass": 1,
-      "avg_latency_ms": 1633.4666666666667,
-      "alive_pct": 0.4
-    },
-    {
-      "source": "geonode",
-      "total": 454,
-      "alive": 2,
-      "elite": 2,
-      "google_pass": 1,
-      "avg_latency_ms": 1217,
-      "alive_pct": 0.4
-    },
-    {
-      "source": "databay",
-      "total": 706,
-      "alive": 3,
-      "elite": 3,
-      "google_pass": 1,
-      "avg_latency_ms": 2211.3333333333335,
-      "alive_pct": 0.4
+      "source": "sunny9577",
+      "total": 191,
+      "alive": 1,
+      "elite": 1,
+      "google_pass": 0,
+      "avg_latency_ms": 1274,
+      "alive_pct": 0.5
     },
     {
       "source": "clearproxy",
@@ -55,43 +37,34 @@
       "alive": 1,
       "elite": 1,
       "google_pass": 0,
-      "avg_latency_ms": 102,
+      "avg_latency_ms": 196,
       "alive_pct": 0.2
+    },
+    {
+      "source": "thespeedx",
+      "total": 3564,
+      "alive": 3,
+      "elite": 3,
+      "google_pass": 1,
+      "avg_latency_ms": 1632.6666666666667,
+      "alive_pct": 0.1
     },
     {
       "source": "proxyscrape",
       "total": 5743,
-      "alive": 8,
-      "elite": 8,
-      "google_pass": 2,
-      "avg_latency_ms": 2144.875,
-      "alive_pct": 0.1
-    },
-    {
-      "source": "gh:proxygenerator",
-      "total": 1740,
-      "alive": 1,
-      "elite": 1,
-      "google_pass": 0,
-      "avg_latency_ms": 1989,
-      "alive_pct": 0.1
-    },
-    {
-      "source": "gh:itsanwar",
-      "total": 1309,
-      "alive": 1,
-      "elite": 1,
+      "alive": 7,
+      "elite": 7,
       "google_pass": 1,
-      "avg_latency_ms": 842,
+      "avg_latency_ms": 651.8571428571429,
       "alive_pct": 0.1
     },
     {
       "source": "zloi",
-      "total": 5638,
-      "alive": 1,
-      "elite": 1,
-      "google_pass": 1,
-      "avg_latency_ms": 2642,
+      "total": 5651,
+      "alive": 0,
+      "elite": 0,
+      "google_pass": 0,
+      "avg_latency_ms": null,
       "alive_pct": 0
     },
     {
@@ -131,15 +104,6 @@
       "alive_pct": 0
     },
     {
-      "source": "sunny9577",
-      "total": 190,
-      "alive": 0,
-      "elite": 0,
-      "google_pass": 0,
-      "avg_latency_ms": null,
-      "alive_pct": 0
-    },
-    {
       "source": "spysme",
       "total": 6,
       "alive": 0,
@@ -151,10 +115,10 @@
     {
       "source": "scanner",
       "total": 153938,
-      "alive": 3,
-      "elite": 3,
+      "alive": 2,
+      "elite": 2,
       "google_pass": 0,
-      "avg_latency_ms": 1881.3333333333333,
+      "avg_latency_ms": 2235,
       "alive_pct": 0
     },
     {
@@ -195,7 +159,7 @@
     },
     {
       "source": "proxifly",
-      "total": 2858,
+      "total": 2877,
       "alive": 0,
       "elite": 0,
       "google_pass": 0,
@@ -213,7 +177,7 @@
     },
     {
       "source": "monosans",
-      "total": 252,
+      "total": 251,
       "alive": 0,
       "elite": 0,
       "google_pass": 0,
@@ -231,7 +195,7 @@
     },
     {
       "source": "iplocate",
-      "total": 1852,
+      "total": 1855,
       "alive": 0,
       "elite": 0,
       "google_pass": 0,
@@ -275,6 +239,15 @@
       "alive_pct": 0
     },
     {
+      "source": "gh:proxygenerator",
+      "total": 1740,
+      "alive": 0,
+      "elite": 0,
+      "google_pass": 0,
+      "avg_latency_ms": null,
+      "alive_pct": 0
+    },
+    {
       "source": "gh:openproxyhub",
       "total": 1111,
       "alive": 0,
@@ -285,7 +258,7 @@
     },
     {
       "source": "gh:officialputuid",
-      "total": 22577,
+      "total": 22567,
       "alive": 0,
       "elite": 0,
       "google_pass": 0,
@@ -303,7 +276,16 @@
     },
     {
       "source": "gh:komutan234",
-      "total": 2217,
+      "total": 2219,
+      "alive": 0,
+      "elite": 0,
+      "google_pass": 0,
+      "avg_latency_ms": null,
+      "alive_pct": 0
+    },
+    {
+      "source": "gh:itsanwar",
+      "total": 1308,
       "alive": 0,
       "elite": 0,
       "google_pass": 0,
@@ -312,11 +294,11 @@
     },
     {
       "source": "gh:gitrecon1455",
-      "total": 286221,
-      "alive": 4,
-      "elite": 4,
+      "total": 286198,
+      "alive": 1,
+      "elite": 1,
       "google_pass": 0,
-      "avg_latency_ms": 2399.75,
+      "avg_latency_ms": 79,
       "alive_pct": 0
     },
     {
@@ -330,7 +312,7 @@
     },
     {
       "source": "gh:dpangestuw",
-      "total": 5676,
+      "total": 5679,
       "alive": 0,
       "elite": 0,
       "google_pass": 0,
@@ -339,7 +321,7 @@
     },
     {
       "source": "gh:anonym0us",
-      "total": 1355,
+      "total": 1356,
       "alive": 0,
       "elite": 0,
       "google_pass": 0,
@@ -365,8 +347,17 @@
       "alive_pct": 0
     },
     {
+      "source": "geonode",
+      "total": 453,
+      "alive": 0,
+      "elite": 0,
+      "google_pass": 0,
+      "avg_latency_ms": null,
+      "alive_pct": 0
+    },
+    {
       "source": "freeproxylist",
-      "total": 90,
+      "total": 98,
       "alive": 0,
       "elite": 0,
       "google_pass": 0,
@@ -384,16 +375,16 @@
     },
     {
       "source": "ercin",
-      "total": 57716,
-      "alive": 26,
-      "elite": 26,
-      "google_pass": 6,
-      "avg_latency_ms": 2773.6923076923076,
+      "total": 57725,
+      "alive": 7,
+      "elite": 7,
+      "google_pass": 1,
+      "avg_latency_ms": 374.57142857142856,
       "alive_pct": 0
     },
     {
       "source": "dinoz0rg",
-      "total": 1538,
+      "total": 1539,
       "alive": 0,
       "elite": 0,
       "google_pass": 0,
@@ -402,7 +393,16 @@
     },
     {
       "source": "databay-country",
-      "total": 28,
+      "total": 27,
+      "alive": 0,
+      "elite": 0,
+      "google_pass": 0,
+      "avg_latency_ms": null,
+      "alive_pct": 0
+    },
+    {
+      "source": "databay",
+      "total": 707,
       "alive": 0,
       "elite": 0,
       "google_pass": 0,
@@ -412,15 +412,15 @@
     {
       "source": "casa",
       "total": 51907,
-      "alive": 1,
-      "elite": 1,
+      "alive": 0,
+      "elite": 0,
       "google_pass": 0,
-      "avg_latency_ms": 2612,
+      "avg_latency_ms": null,
       "alive_pct": 0
     },
     {
       "source": "acidvegas",
-      "total": 3570,
+      "total": 3567,
       "alive": 0,
       "elite": 0,
       "google_pass": 0,
