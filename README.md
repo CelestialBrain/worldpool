@@ -1,10 +1,10 @@
 # Worldpool
 
 <!-- BADGES_START -->
-![Alive](https://img.shields.io/badge/alive-208-brightgreen)
-![Google Pass](https://img.shields.io/badge/google--pass-54-blue)
-![Hijacked Blocked](https://img.shields.io/badge/hijacked--blocked-225733-red)
-![Avg Latency](https://img.shields.io/badge/avg--latency-1098ms-yellow)
+![Alive](https://img.shields.io/badge/alive-211-brightgreen)
+![Google Pass](https://img.shields.io/badge/google--pass-48-blue)
+![Hijacked Blocked](https://img.shields.io/badge/hijacked--blocked-225729-red)
+![Avg Latency](https://img.shields.io/badge/avg--latency-1068ms-yellow)
 ![Reliability](https://img.shields.io/badge/reliability-1.2%25-purple)
 ![Updated](https://img.shields.io/badge/updated-2026--08--22-lightgrey)
 <!-- BADGES_END -->
@@ -186,13 +186,13 @@ REST API on port 3000. Rate limited to 60 req/min per IP.
 <!-- STATS_START -->
 | Metric | Value |
 | --- | --- |
-| Total proxies | 630639 |
-| Alive proxies | 208 |
-| Elite proxies | 208 |
-| Google pass | 54 |
-| Hijacked | 225733 |
-| Avg latency | 1098 ms |
-| Last updated | 2026-08-22T17:33:27.000Z |
+| Total proxies | 630643 |
+| Alive proxies | 211 |
+| Elite proxies | 211 |
+| Google pass | 48 |
+| Hijacked | 225729 |
+| Avg latency | 1068 ms |
+| Last updated | 2026-08-22T17:47:50.000Z |
 <!-- STATS_END -->
 
 ---
